@@ -5,27 +5,67 @@ import (
 	"github.com/urfave/cli"
 	"log"
 	"os"
+	"strings"
+	"sync"
 )
 
 type ArgConfig struct {
+	// FreeSWITCH
+	FreeswitchHost          string
+	FreeswitchPort          uint
+	FreeswitchEslPassword   string
+	FreeswitchSofiaProfiles []string
+	FreeswitchAdvertiseIp   string
+	FreeswitchAdvertisePort uint
 	// Key/Value Store
 	KvBackend string
 	KvHost    string
-	KvPort    uint8
+	KvPort    uint
 	KvPrefix  string
-	// FreeSWITCH
-	FreeswitchHost          string
-	FreeswitchPort          uint8
-	FreeswitchEslPassword   string
-	FreeswitchTimeout       uint8
-	FreeswitchSofiaProfiles []string
 	//
 	SyncInterval uint32
 }
 
 func parseFlags(c *cli.Context) *ArgConfig {
 	var result ArgConfig
-	// TODO: parse stuff etc
+
+	for _, v := range []string{"fshost", "fspassword", "fsprofiles", "fsadvertiseip", "kvhost", "kvprefix"} {
+		if len(c.String(v)) == 0 {
+			log.Printf("Error: --%s must not be empty.\n\n", v)
+			cli.ShowAppHelp(c)
+			os.Exit(1)
+		}
+	}
+	for _, v := range []string{"fsport", "fsadvertiseport", "kvport"} {
+		if uint(c.Int(v)) <= 0 {
+			log.Printf("Error: --%s must not be 0 (or empty).\n\n", v)
+			cli.ShowAppHelp(c)
+			os.Exit(1)
+		}
+	}
+	result.FreeswitchHost = c.String("fshost")
+	result.FreeswitchPort = uint(c.Int("fsport"))
+	result.FreeswitchEslPassword = c.String("fspassword")
+	result.KvHost = c.String("kvhost")
+	result.KvPort = uint(c.Int("kvport"))
+	result.KvPrefix = c.String("kvprefix")
+
+	// Add more here as they are supported.
+	available_backends := []string{"etcd"}
+	if stringInSlice(c.String("kvbackend"), available_backends) != true {
+		log.Printf("Error: --kvbackend must be one of: %s\n\n", strings.Join(available_backends, ", "))
+		cli.ShowAppHelp(c)
+		os.Exit(1)
+	}
+
+	if uint32(c.Int("syncinterval")) <= 0 {
+		log.Printf("Error: --syncinterval must not be 0 (or empty).\n\n")
+		cli.ShowAppHelp(c)
+		os.Exit(1)
+	}
+	result.SyncInterval = uint32(c.Int("syncinterval"))
+
+	result.FreeswitchSofiaProfiles = strings.Split(c.String("fsprofiles"), ",")
 
 	return &result
 }
@@ -38,9 +78,9 @@ func main() {
 	app.Action = func(c *cli.Context) error {
 		arg_config := parseFlags(c)
 
-		log.Printf("Making FreeSWITCH ESL Connections...")
+		log.Printf("Opening FreeSWITCH ESL Connections (%s:%d)...", arg_config.FreeswitchHost, arg_config.FreeswitchPort)
 		// TODO: reconnection attempts? or just exit?
-		event_client, err := goesl.NewClient(arg_config.FreeswitchHost, uint(arg_config.FreeswitchPort), arg_config.FreeswitchEslPassword, int(5))
+		event_client, err := goesl.NewClient(arg_config.FreeswitchHost, arg_config.FreeswitchPort, arg_config.FreeswitchEslPassword, int(5))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -51,11 +91,24 @@ func main() {
 		}
 		log.Printf("FreeSWITCH ESL Connections Established.")
 
+		// Setup our KV backend client.
+		var kv_backend KvBackend
+		switch arg_config.KvBackend {
+		case "etcd":
+			var kv_backend KvBackendEtcd
+			kv_backend.SetupEtcdClient(arg_config.KvHost, arg_config.KvPort)
+		}
+
+		var wg sync.WaitGroup
+
 		go event_client.Handle()
 		go sync_client.Handle()
-		go watchForRegistrationEvents(&event_client)
-		go syncRegistrations(&sync_client, arg_config.FreeswitchSofiaProfiles, arg_config.SyncInterval)
-		// TODO: handle some done channels for the above
+		wg.Add(1)
+		go watchForRegistrationEvents(&event_client, &kv_backend, &wg)
+		wg.Add(1)
+		go syncRegistrations(&sync_client, arg_config.FreeswitchSofiaProfiles, arg_config.SyncInterval, &kv_backend, &wg)
+
+		wg.Wait()
 
 		return nil
 	}

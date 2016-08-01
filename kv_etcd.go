@@ -8,7 +8,11 @@ import (
 	"time"
 )
 
-func setupEtcdClient(host string, port uint8) (etcd_client.KeysAPI, error) {
+type KvBackendEtcd struct {
+	Kapi etcd_client.KeysAPI
+}
+
+func (k KvBackendEtcd) SetupEtcdClient(host string, port uint) error {
 	cfg := etcd_client.Config{
 		// TODO: do we want to specify multiple etcd hosts?
 		Endpoints: []string{fmt.Sprintf("http://%s:%d", host, port)},
@@ -18,34 +22,37 @@ func setupEtcdClient(host string, port uint8) (etcd_client.KeysAPI, error) {
 	}
 	c, err := etcd_client.New(cfg)
 	if err != nil {
-		return etcd_client.NewKeysAPI(nil), err
+		return err
 	}
-	return etcd_client.NewKeysAPI(c), nil
+	k.Kapi = etcd_client.NewKeysAPI(c)
+	return nil
 }
 
-// If the key is a prefix (recursive lookup), set prefix = true
-func readKv(kapi etcd_client.KeysAPI, key string, prefix bool) {
-	// get "/foo" key's value
-	log.Print("Getting '/foo' key value")
-	resp, err := kapi.Get(context.Background(), "/foo", nil)
+// If the key is a prefix (recursive lookup), set recursive = true
+func (k KvBackendEtcd) Read(key string, recursive bool) (*string, error) {
+	log.Printf("readKv(): Getting '%s' key value (recursive: %t)", key, recursive)
+	// TODO: parse option for recursive to .Get()
+	resp, err := k.Kapi.Get(context.Background(), key, nil)
 	if err != nil {
-		log.Fatal(err)
+		return new(string), err
 	} else {
 		// print common key info
 		log.Printf("Get is done. Metadata is %q\n", resp)
 		// print value
 		log.Printf("%q key has %q value\n", resp.Node.Key, resp.Node.Value)
 	}
+	// TODO: parse out etcd_client.Node, get a string value?
+	return new(string), nil
 }
 
-func writeKv(kapi etcd_client.KeysAPI, key string, value string) {
-	// set "/foo" key with "bar" value
-	log.Print("Setting '/foo' key with 'bar' value")
-	resp, err := kapi.Set(context.Background(), "/foo", "bar", nil)
+func (k KvBackendEtcd) Write(key string, value string, ttl string) error {
+	log.Printf("writeKv(): Writing '%s' key value", key)
+	resp, err := k.Kapi.Set(context.Background(), key, value, nil)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	} else {
 		// print common key info
 		log.Printf("Set is done. Metadata is %q\n", resp)
 	}
+	return nil
 }
