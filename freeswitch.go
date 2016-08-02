@@ -3,35 +3,31 @@ package main
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"github.com/0x19/goesl"
 	"github.com/paulrosania/go-charset/charset"
 	_ "github.com/paulrosania/go-charset/data"
 	"log"
 	"strings"
-	"sync"
-	"time"
 )
 
-func watchForRegistrationEvents(esl_client *goesl.Client, kv_backend *KvBackend, wg *sync.WaitGroup) {
-	defer wg.Done()
-	log.Printf("watchForRegistrationEvents(): Starting.\n")
-	esl_client.Send("events json CUSTOM sofia::register sofia::expire")
-	log.Printf("watchForRegistrationEvents(): Started.\n")
-	for {
-		msg, err := esl_client.ReadMessage()
-		if err != nil {
-			// If it contains EOF, we really dont care...
-			if !strings.Contains(err.Error(), "EOF") && err.Error() != "unexpected end of JSON input" {
-				log.Printf("(Ignored) Error while reading FreeSWITCH message: %s", err)
-				continue
-			}
-			log.Printf("Error while reading FreeSWITCH message: %s", err)
-			break
+// event_type string, user string, err error
+func getFreeswitchRegEvent(event map[string]string) (string, string, error) {
+	// These events don't have the full <user> like we get showing registrations, build it from username and from-host.
+	for _, v := range []string{"Event-Subclass", "username", "from-host"} {
+		if _, ok := event[v]; ok == false {
+			return "", "", errors.New(fmt.Sprintf("getFreeswitchRegEvent() : '%s' field does not exist in FreeSWITCH Event, must be present.", v))
 		}
-		log.Printf("New Message from FreeSWITCH: %+v\n", msg)
+		if len(event[v]) == 0 {
+			return "", "", errors.New(fmt.Sprintf("getFreeswitchRegEvent() : '%s' field cannot be empty in FreeSWITCH Event.", v))
+		}
 	}
-	log.Printf("watchForRegistrationEvents(): Finished.\n")
+	valid_event_subclasses := []string{"sofia::register", "sofia::expire", "sofia::unregister"}
+	if stringInSlice(event["Event-Subclass"], valid_event_subclasses) == false {
+		return "", "", errors.New(fmt.Sprintf("getFreeswitchRegEvent() : 'Event-Subclass' field must be one of: %s", strings.Join(valid_event_subclasses, ", ")))
+	}
+	return strings.Replace(event["Event-Subclass"], "sofia::", "", 1), fmt.Sprintf("%s@%s", event["username"], event["from-host"]), nil
 }
 
 type FsRegProfile struct {
@@ -56,7 +52,8 @@ type FsRegProfileRegistration struct {
 }
 
 // TODO: some kind of return dataset.
-func getFreeswitchRegistrations(esl_client *goesl.Client, sofia_profiles []string) {
+func getFreeswitchRegistrations(esl_client *goesl.Client, sofia_profiles []string) ([]string, error) {
+	var results []string
 	for _, sofia_profile := range sofia_profiles {
 		log.Printf("getFreeswitchRegistrations(): Fetching Registrations for Sofia Profile '%s'.\n", sofia_profile)
 		esl_client.Send(fmt.Sprintf("api sofia xmlstatus profile %s reg", sofia_profile))
@@ -68,8 +65,7 @@ func getFreeswitchRegistrations(esl_client *goesl.Client, sofia_profiles []strin
 				log.Printf("Error while reading Freeswitch message: %s", err.Error())
 				continue
 			}
-			// TODO: return with an error channel instead?
-			log.Fatal(err)
+			return []string{}, err
 		}
 		// TODOLATER: do we want to check the msg.Headers at all?
 		var parsed_msg FsRegProfile
@@ -78,25 +74,14 @@ func getFreeswitchRegistrations(esl_client *goesl.Client, sofia_profiles []strin
 		decoder.CharsetReader = charset.NewReader
 		err = decoder.Decode(&parsed_msg)
 		if err != nil {
-			// TODO: return with an error channel instead?
-			log.Fatal(err)
+			return []string{}, err
 		}
-		log.Printf("Sofia Profile '%s' Registrations: %+v\n", sofia_profile, parsed_msg)
-		// TODO: parse out msg, and reconcile against K/V store data.
+		//log.Printf("Sofia Profile '%s' Registrations: %+v\n", sofia_profile, parsed_msg)
+		for _, v := range parsed_msg.Registrations {
+			if len(v.User) > 0 && stringInSlice(v.User, results) == false {
+				results = append(results, v.User)
+			}
+		}
 	}
-}
-
-func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, sync_interval uint32, kv_backend *KvBackend, wg *sync.WaitGroup) {
-	defer wg.Done()
-	for {
-		log.Printf("syncRegistrations(): Starting.\n")
-
-		getFreeswitchRegistrations(esl_client, sofia_profiles)
-
-		//last_active_registrations := kv_backend.Read("")
-
-		// Sleep between syncs, this is run in a goroutine.
-		log.Printf("syncRegistrations(): Finished, sleeping for %d seconds.\n", sync_interval)
-		time.Sleep(time.Duration(sync_interval) * time.Second)
-	}
+	return results, nil
 }

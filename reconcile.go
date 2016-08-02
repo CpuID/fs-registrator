@@ -7,7 +7,7 @@ import ()
 type Registrations map[string]string
 
 // add_registrations Registrations, remove_registrations []string
-func reconcileRegistrations(advertise_ip string, advertise_port string, last_active_registrations Registrations, current_active_registrations Registrations) (Registrations, []string, error) {
+func reconcileRegistrations(advertise_ip string, advertise_port uint, last_active_registrations Registrations, current_active_registrations Registrations) (Registrations, []string, error) {
 	var add_registrations Registrations
 	var remove_registrations []string
 

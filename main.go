@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"github.com/0x19/goesl"
 	"github.com/urfave/cli"
 	"log"
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 type ArgConfig struct {
@@ -68,6 +70,58 @@ func parseFlags(c *cli.Context) *ArgConfig {
 	result.FreeswitchSofiaProfiles = strings.Split(c.String("fsprofiles"), ",")
 
 	return &result
+}
+
+func watchForRegistrationEvents(esl_client *goesl.Client, kv_backend *KvBackend, wg *sync.WaitGroup) {
+	defer wg.Done()
+	log.Printf("watchForRegistrationEvents(): Starting.\n")
+	esl_client.Send("events json CUSTOM sofia::register sofia::unregister sofia::expire")
+	log.Printf("watchForRegistrationEvents(): Started.\n")
+	for {
+		msg, err := esl_client.ReadMessage()
+		if err != nil {
+			// If it contains EOF, we really dont care...
+			if !strings.Contains(err.Error(), "EOF") && err.Error() != "unexpected end of JSON input" {
+				log.Printf("(Ignored) Error while reading FreeSWITCH message: %s", err)
+				continue
+			}
+			log.Printf("Error while reading FreeSWITCH message: %s", err)
+			break
+		}
+		log.Printf("watchForRegistrationEvents() : New Message from FreeSWITCH - %+v\n", msg)
+		// Upstream checks that type exists, no need to check again.
+		// https://github.com/0x19/goesl/blob/master/message.go#L58-L61
+		if msg.Headers["type"] == "text/event-json" {
+			log.Printf("watchForRegistrationEvents() : Message is a JSON event, parse it.\n")
+			reg_event, reg_event_user, err := getFreeswitchRegEvent(msg.Headers)
+			if err != nil {
+				// TODO: log to an error channel?
+				log.Fatal(err)
+			}
+			log.Printf("watchForRegistrationEvents() : Event - %s, User - %s\n", reg_event, reg_event_user)
+		}
+	}
+	log.Printf("watchForRegistrationEvents(): Finished.\n")
+}
+
+func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, sync_interval uint32, kv_backend *KvBackend, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for {
+		log.Printf("syncRegistrations(): Starting.\n")
+
+		fs_registrations, err := getFreeswitchRegistrations(esl_client, sofia_profiles)
+		if err != nil {
+			// TODO: return an error channel or something?
+			log.Fatal(err)
+		}
+		fmt.Printf("FS Registrations: %+v\n", fs_registrations)
+
+		//last_active_registrations := kv_backend.Read("")
+
+		// Sleep between syncs, this is run in a goroutine.
+		log.Printf("syncRegistrations(): Finished, sleeping for %d seconds.\n", sync_interval)
+		time.Sleep(time.Duration(sync_interval) * time.Second)
+	}
 }
 
 func main() {
