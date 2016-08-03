@@ -12,22 +12,43 @@ import (
 	"strings"
 )
 
+func subscribeToFreeswitchRegEvents(esl_client *goesl.Client) error {
+	// Ensure that we are listening to the required FreeSWITCH events, before we start watching the connection.
+	esl_client.Send("events json CUSTOM sofia::register sofia::unregister sofia::expire")
+	result, err := esl_client.ReadMessage()
+	if err != nil {
+		return err
+	}
+	for _, v := range []string{"Content-Type", "Reply-Text"} {
+		if _, ok := result.Headers[v]; ok == false {
+			return errors.New(fmt.Sprintf("subscribeToFreeswitchRegEvents() : Response header '%s' header is missing, cannot proceed.", v))
+		}
+	}
+	if result.Headers["Content-Type"] != "command/reply" {
+		return errors.New("subscribeToFreeswitchRegEvents() : Response header 'Content-Type' != 'command/reply', cannot proceed.")
+	}
+	if result.Headers["Reply-Text"] != "+OK event listener enabled json" {
+		return errors.New("subscribeToFreeswitchRegEvents() : Response header 'Reply-Text' != '+OK event listener enabled json', cannot proceed.")
+	}
+	return nil
+}
+
+// These events don't have the full <user> like we get showing registrations, build it from username and from-host.
 // event_type string, user string, err error
-func getFreeswitchRegEvent(event map[string]string) (string, string, error) {
-	// These events don't have the full <user> like we get showing registrations, build it from username and from-host.
+func parseFreeswitchRegEvent(event *goesl.Message) (string, string, error) {
 	for _, v := range []string{"Event-Subclass", "username", "from-host"} {
-		if _, ok := event[v]; ok == false {
+		if _, ok := event.Headers[v]; ok == false {
 			return "", "", errors.New(fmt.Sprintf("getFreeswitchRegEvent() : '%s' field does not exist in FreeSWITCH Event, must be present.", v))
 		}
-		if len(event[v]) == 0 {
+		if len(event.Headers[v]) == 0 {
 			return "", "", errors.New(fmt.Sprintf("getFreeswitchRegEvent() : '%s' field cannot be empty in FreeSWITCH Event.", v))
 		}
 	}
 	valid_event_subclasses := []string{"sofia::register", "sofia::expire", "sofia::unregister"}
-	if stringInSlice(event["Event-Subclass"], valid_event_subclasses) == false {
+	if stringInSlice(event.Headers["Event-Subclass"], valid_event_subclasses) == false {
 		return "", "", errors.New(fmt.Sprintf("getFreeswitchRegEvent() : 'Event-Subclass' field must be one of: %s", strings.Join(valid_event_subclasses, ", ")))
 	}
-	return strings.Replace(event["Event-Subclass"], "sofia::", "", 1), fmt.Sprintf("%s@%s", event["username"], event["from-host"]), nil
+	return strings.Replace(event.Headers["Event-Subclass"], "sofia::", "", 1), fmt.Sprintf("%s@%s", event.Headers["username"], event.Headers["from-host"]), nil
 }
 
 type FsRegProfile struct {
