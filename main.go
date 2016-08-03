@@ -6,6 +6,7 @@ import (
 	"github.com/urfave/cli"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -14,15 +15,15 @@ import (
 type ArgConfig struct {
 	// FreeSWITCH
 	FreeswitchHost          string
-	FreeswitchPort          uint
+	FreeswitchPort          int
 	FreeswitchEslPassword   string
 	FreeswitchSofiaProfiles []string
 	FreeswitchAdvertiseIp   string
-	FreeswitchAdvertisePort uint
+	FreeswitchAdvertisePort int
 	// Key/Value Store
 	KvBackend string
 	KvHost    string
-	KvPort    uint
+	KvPort    int
 	KvPrefix  string
 	//
 	SyncInterval uint32
@@ -39,17 +40,22 @@ func parseFlags(c *cli.Context) *ArgConfig {
 		}
 	}
 	for _, v := range []string{"fsport", "fsadvertiseport", "kvport"} {
-		if uint(c.Int(v)) <= 0 {
+		if c.Int(v) <= 0 {
 			log.Printf("Error: --%s must not be 0 (or empty).\n\n", v)
+			cli.ShowAppHelp(c)
+			os.Exit(1)
+		}
+		if c.Int(v) > 65536 {
+			log.Printf("Error: --%s must be below 65536.\n\n", v)
 			cli.ShowAppHelp(c)
 			os.Exit(1)
 		}
 	}
 	result.FreeswitchHost = c.String("fshost")
-	result.FreeswitchPort = uint(c.Int("fsport"))
+	result.FreeswitchPort = c.Int("fsport")
 	result.FreeswitchEslPassword = c.String("fspassword")
 	result.KvHost = c.String("kvhost")
-	result.KvPort = uint(c.Int("kvport"))
+	result.KvPort = c.Int("kvport")
 	result.KvPrefix = c.String("kvprefix")
 
 	// Add more here as they are supported.
@@ -59,6 +65,7 @@ func parseFlags(c *cli.Context) *ArgConfig {
 		cli.ShowAppHelp(c)
 		os.Exit(1)
 	}
+	result.KvBackend = c.String("kvbackend")
 
 	if uint32(c.Int("syncinterval")) <= 0 {
 		log.Printf("Error: --syncinterval must not be 0 (or empty).\n\n")
@@ -72,7 +79,7 @@ func parseFlags(c *cli.Context) *ArgConfig {
 	return &result
 }
 
-func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, advertise_port uint, kv_backend *KvBackend, wg *sync.WaitGroup) {
+func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, advertise_port int, kv_backend *KvBackend, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Printf("watchForRegistrationEvents(): Starting.\n")
 	err := subscribeToFreeswitchRegEvents(esl_client)
@@ -103,7 +110,7 @@ func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, a
 	log.Printf("watchForRegistrationEvents(): Finished.\n")
 }
 
-func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advertise_ip string, advertise_port uint, sync_interval uint32, kv_backend *KvBackend, wg *sync.WaitGroup) {
+func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advertise_ip string, advertise_port int, sync_interval uint32, kv_backend *KvBackend, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		log.Printf("syncRegistrations(): Starting.\n")
@@ -131,9 +138,21 @@ func main() {
 	app.Action = func(c *cli.Context) error {
 		arg_config := parseFlags(c)
 
+		// Setup our KV backend client.
+		log.Printf("Setting up K/V (%s) Backend...", arg_config.KvBackend)
+		kv_backend, err := CreateKvBackend(map[string]string{
+			"backend": arg_config.KvBackend,
+			"host":    arg_config.KvHost,
+			"port":    strconv.Itoa(int(arg_config.KvPort)),
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("K/V Backend Ready.\n")
+
 		log.Printf("Opening FreeSWITCH ESL Connections (%s:%d)...", arg_config.FreeswitchHost, arg_config.FreeswitchPort)
 		// TODO: reconnection attempts? or just exit?
-		event_client, err := goesl.NewClient(arg_config.FreeswitchHost, arg_config.FreeswitchPort, arg_config.FreeswitchEslPassword, int(5))
+		event_client, err := goesl.NewClient(arg_config.FreeswitchHost, uint(arg_config.FreeswitchPort), arg_config.FreeswitchEslPassword, int(5))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -143,14 +162,6 @@ func main() {
 			log.Fatal(err)
 		}
 		log.Printf("FreeSWITCH ESL Connections Established.")
-
-		// Setup our KV backend client.
-		var kv_backend KvBackend
-		switch arg_config.KvBackend {
-		case "etcd":
-			var kv_backend KvBackendEtcd
-			kv_backend.SetupEtcdClient(arg_config.KvHost, arg_config.KvPort)
-		}
 
 		var wg sync.WaitGroup
 

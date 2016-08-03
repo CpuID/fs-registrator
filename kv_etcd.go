@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	etcd_client "github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
@@ -12,20 +13,26 @@ type KvBackendEtcd struct {
 	Kapi etcd_client.KeysAPI
 }
 
-func (k KvBackendEtcd) SetupEtcdClient(host string, port uint) error {
+func NewKvBackendEtcd(conf map[string]string) (KvBackend, error) {
+	for _, v := range []string{"host", "port"} {
+		if _, ok := conf[v]; ok == false {
+			return nil, errors.New(fmt.Sprintf("etcd: '%s' key does not exist in conf.", v))
+		}
+	}
 	cfg := etcd_client.Config{
 		// TODO: do we want to specify multiple etcd hosts?
-		Endpoints: []string{fmt.Sprintf("http://%s:%d", host, port)},
+		Endpoints: []string{fmt.Sprintf("http://%s:%s", conf["host"], conf["port"])},
 		Transport: etcd_client.DefaultTransport,
 		// set timeout per request to fail fast when the target endpoint is unavailable
 		HeaderTimeoutPerRequest: time.Second,
 	}
 	c, err := etcd_client.New(cfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	k.Kapi = etcd_client.NewKeysAPI(c)
-	return nil
+	return &KvBackendEtcd{
+		Kapi: etcd_client.NewKeysAPI(c),
+	}, nil
 }
 
 // If the key is a prefix (recursive lookup), set recursive = true
