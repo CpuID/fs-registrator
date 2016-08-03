@@ -63,7 +63,7 @@ func (k *KvBackendEtcd) Read(key string, recursive bool) (*string, error) {
 	return new(string), nil
 }
 
-func (k *KvBackendEtcd) Write(key string, value string, ttl string) error {
+func (k *KvBackendEtcd) Write(key string, value string, ttl int) error {
 	use_key := k.Prefix
 	if len(key) > 0 {
 		use_key = fmt.Sprintf("/%s", key)
@@ -75,6 +75,22 @@ func (k *KvBackendEtcd) Write(key string, value string, ttl string) error {
 	} else {
 		// print common key info
 		log.Printf("Set is done. Metadata is %q\n", resp)
+	}
+	return nil
+}
+
+func (k *KvBackendEtcd) Delete(key string) error {
+	use_key := k.Prefix
+	if len(key) > 0 {
+		use_key = fmt.Sprintf("/%s", key)
+	}
+	log.Printf("etcd.Delete(): Deleting '%s' key value", use_key)
+	resp, err := k.Kapi.Delete(context.Background(), use_key, nil)
+	if err != nil {
+		return err
+	} else {
+		// print common key info
+		log.Printf("Delete is done. Metadata is %q\n", resp)
 	}
 	return nil
 }

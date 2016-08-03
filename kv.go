@@ -9,7 +9,8 @@ import (
 
 type KvBackend interface {
 	Read(key string, recursive bool) (*string, error)
-	Write(key string, value string, ttl string) error
+	Write(key string, value string, ttl int) error
+	Delete(key string) error
 }
 
 // Credit: http://matthewbrown.io/2016/01/23/factory-pattern-in-golang/
@@ -57,4 +58,21 @@ func CreateKvBackend(conf map[string]string) (KvBackend, error) {
 
 	// Run the factory with the configuration
 	return kvBackendFactory(conf)
+}
+
+//
+
+type KvBackendValue struct {
+	Host string `json:"host"`
+	Port int    `json:"port"`
+}
+
+func getKvBackendValueType(ip string, port int) (KvBackendValue, error) {
+	// TODO: implement
+	return KvBackendValue{}, nil
+}
+
+func getKvBackendValueString(input KvBackendValue) (string, error) {
+	// TODO: implement
+	return "", nil
 }

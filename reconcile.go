@@ -6,8 +6,14 @@ import ()
 // We use the <user> value from "sofia xmlstatus profile internal reg" to populate.
 type Registrations map[string]string
 
+func generateRegistrations(users []string, advertise_ip string, advertise_port int) Registrations {
+	var result Registrations
+	// TODO: implement
+	return result
+}
+
 // add_registrations Registrations, remove_registrations []string
-func reconcileRegistrations(advertise_ip string, advertise_port uint, last_active_registrations Registrations, current_active_registrations Registrations) (Registrations, []string, error) {
+func reconcileRegistrations(advertise_ip string, advertise_port int, last_active_registrations Registrations, current_active_registrations Registrations) (Registrations, []string, error) {
 	var add_registrations Registrations
 	var remove_registrations []string
 
