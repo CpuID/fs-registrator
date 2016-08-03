@@ -59,7 +59,7 @@ func parseFlags(c *cli.Context) *ArgConfig {
 	result.KvPrefix = c.String("kvprefix")
 
 	// Add more here as they are supported.
-	available_backends := []string{"etcd"}
+	available_backends := availableKvBackends()
 	if stringInSlice(c.String("kvbackend"), available_backends) != true {
 		log.Printf("Error: --kvbackend must be one of: %s\n\n", strings.Join(available_backends, ", "))
 		cli.ShowAppHelp(c)
@@ -210,7 +210,7 @@ func main() {
 		cli.StringFlag{
 			Name:  "kvbackend",
 			Value: "etcd",
-			Usage: "Key/Value Backend (one of 'etcd')",
+			Usage: fmt.Sprintf("Key/Value Backend (one of: %s)", strings.Join(availableKvBackends(), ", ")),
 		},
 		cli.StringFlag{
 			Name:  "kvhost",

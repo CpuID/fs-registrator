@@ -14,7 +14,7 @@ We use ESL events + a semi-regular sync for reconciliation (to gracefully handle
 
 Currently the focus is on [etcd](https://github.com/coreos/etcd), with the intention to support others in future. [Consul](https://github.com/hashicorp/consul) and [redis](https://github.com/antirez/redis) would be the most likely next targets (both support prefix-based lookups).
 
-New K/V store backends can be added, see [kv_etcd.go](https://github.com/CpuID/fs-registrator/blob/master/kv_etcd.go) for an example implementation. As long as you satisfy the `KvBackend` interface and register it, thats the main requirement.
+New K/V store backends can be added, see [kv_etcd.go](https://github.com/CpuID/fs-registrator/blob/master/kv_etcd.go) for an example implementation. As long as you satisfy the [KvBackend](https://github.com/CpuID/fs-registrator/blob/master/kv.go#L10-L13) interface and [register the backend](https://github.com/CpuID/fs-registrator/blob/master/kv.go#L18), it will be available.
 
 # Configuration
 

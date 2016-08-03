@@ -34,6 +34,15 @@ func RegisterKvBackend(name string, factory KvBackendFactory) {
 	kvBackendFactories[name] = factory
 }
 
+// Make a list of all available K/V backend factories
+func availableKvBackends() []string {
+	var available_kv_backends []string
+	for k, _ := range kvBackendFactories {
+		available_kv_backends = append(available_kv_backends, k)
+	}
+	return available_kv_backends
+}
+
 func CreateKvBackend(conf map[string]string) (KvBackend, error) {
 	if _, ok := conf["backend"]; ok == false {
 		return nil, errors.New("'backend' key does not exist in conf.")
@@ -42,16 +51,10 @@ func CreateKvBackend(conf map[string]string) (KvBackend, error) {
 	kvBackendFactory, ok2 := kvBackendFactories[conf["backend"]]
 
 	if ok2 == false {
-		// Factory has not been registered.
-		// Make a list of all available datastore factories for logging.
-		availableKvBackends := make([]string, len(kvBackendFactories))
-		for k, _ := range kvBackendFactories {
-			availableKvBackends = append(availableKvBackends, k)
-		}
-		fmt.Printf("backends: %+v\n", availableKvBackends)
-		return nil, errors.New(fmt.Sprintf("Invalid K/V Backend Name. Must be one of: %s", strings.Join(availableKvBackends, ", ")))
+		// Factory has not been registered
+		return nil, errors.New(fmt.Sprintf("Invalid K/V Backend Name. Must be one of: %s", strings.Join(availableKvBackends(), ", ")))
 	}
 
-	// Run the factory with the configuration.
+	// Run the factory with the configuration
 	return kvBackendFactory(conf)
 }
