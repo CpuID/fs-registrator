@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/0x19/goesl"
+	"github.com/kr/pretty"
 	"github.com/urfave/cli"
 	"log"
 	"os"
@@ -54,6 +55,8 @@ func parseFlags(c *cli.Context) *ArgConfig {
 	result.FreeswitchHost = c.String("fshost")
 	result.FreeswitchPort = c.Int("fsport")
 	result.FreeswitchEslPassword = c.String("fspassword")
+	result.FreeswitchAdvertiseIp = c.String("fsadvertiseip")
+	result.FreeswitchAdvertisePort = c.Int("fsadvertiseport")
 	result.KvHost = c.String("kvhost")
 	result.KvPort = c.Int("kvport")
 	result.KvPrefix = c.String("kvprefix")
@@ -106,7 +109,7 @@ func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, a
 		}
 		log.Printf("watchForRegistrationEvents() : Event - %s, User - %s\n", reg_event, reg_event_user)
 		if reg_event == "register" {
-			kv_backend_value_string, err := getKvBackendValueString(KvBackendValue{
+			kv_backend_value_string, err := getKvBackendValueJsonString(KvBackendValue{
 				Host: advertise_ip,
 				Port: advertise_port,
 			})
@@ -183,6 +186,7 @@ func main() {
 	app.Usage = "FreeSWITCH Sofia-SIP Registry Bridge (Sync to Key/Value Store)"
 	app.Action = func(c *cli.Context) error {
 		arg_config := parseFlags(c)
+		log.Printf("Config: %# v\n", pretty.Formatter(arg_config))
 
 		// Setup our KV backend client.
 		log.Printf("Setting up K/V (%s) Backend...", arg_config.KvBackend)

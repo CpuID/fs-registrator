@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -67,12 +68,26 @@ type KvBackendValue struct {
 	Port int    `json:"port"`
 }
 
-func getKvBackendValueType(ip string, port int) (KvBackendValue, error) {
-	// TODO: implement
-	return KvBackendValue{}, nil
+func getKvBackendValueType(ip string, port int) KvBackendValue {
+	return KvBackendValue{
+		Host: ip,
+		Port: port,
+	}
 }
 
-func getKvBackendValueString(input KvBackendValue) (string, error) {
-	// TODO: implement
-	return "", nil
+func getKvBackendValueJsonType(input []byte) (KvBackendValue, error) {
+	var result KvBackendValue
+	err := json.Unmarshal(input, &result)
+	if err != nil {
+		return KvBackendValue{}, err
+	}
+	return result, nil
+}
+
+func getKvBackendValueJsonString(input KvBackendValue) (string, error) {
+	json, err := json.Marshal(input)
+	if err != nil {
+		return "", err
+	}
+	return string(json), nil
 }
