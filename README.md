@@ -40,7 +40,7 @@ GLOBAL OPTIONS:
    --fsprofiles value       List of Sofia Profiles to watch (comma separated list) (default: "internal")
    --fsadvertiseip value    SIP Destination IP to store in K/V Store for FreeSWITCH
    --fsadvertiseport value  SIP Destination Port to store in K/V Store for FreeSWITCH
-   --kvbackend value        Key/Value Backend (one of 'etcd') (default: "etcd")
+   --kvbackend value        Key/Value Backend (one of: etcd) (default: "etcd")
    --kvhost value           Key/Value Store Hostname/IP (default: "etcd")
    --kvport value           Key/Value Store Port (default: 2379)
    --kvprefix value         Key Space Prefix in K/V Store to store Registrations (default: "fs_registrations")
