@@ -2,6 +2,8 @@
 
 *FreeSWITCH Sofia-SIP Registry Bridge (Sync to Key/Value Store)*
 
+[![Build Status](https://travis-ci.org/CpuID/fs-registrator.svg?branch=master)](https://travis-ci.org/CpuID/fs-registrator) [![Coverage Status](https://coveralls.io/repos/github/CpuID/fs-registrator/badge.svg?branch=master)](https://coveralls.io/github/CpuID/fs-registrator?branch=master)
+
 # Summary
 
 When run and pointed at a FreeSWITCH instance, will take note of all Sofia-SIP registrations, and propagate them to a (replicated) K/V store for lookups.
