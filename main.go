@@ -58,7 +58,6 @@ func parseFlags(c *cli.Context) *ArgConfig {
 	result.KvPort = c.Int("kvport")
 	result.KvPrefix = c.String("kvprefix")
 
-	// Add more here as they are supported.
 	available_backends := availableKvBackends()
 	if stringInSlice(c.String("kvbackend"), available_backends) != true {
 		log.Printf("Error: --kvbackend must be one of: %s\n\n", strings.Join(available_backends, ", "))
@@ -79,7 +78,7 @@ func parseFlags(c *cli.Context) *ArgConfig {
 	return &result
 }
 
-func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, advertise_port int, kv_backend *KvBackend, wg *sync.WaitGroup) {
+func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, advertise_port int, kv_backend KvBackend, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Printf("watchForRegistrationEvents(): Starting.\n")
 	err := subscribeToFreeswitchRegEvents(esl_client)
@@ -110,7 +109,7 @@ func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, a
 	log.Printf("watchForRegistrationEvents(): Finished.\n")
 }
 
-func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advertise_ip string, advertise_port int, sync_interval uint32, kv_backend *KvBackend, wg *sync.WaitGroup) {
+func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advertise_ip string, advertise_port int, sync_interval uint32, kv_backend KvBackend, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		log.Printf("syncRegistrations(): Starting.\n")
@@ -122,7 +121,15 @@ func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advert
 		}
 		fmt.Printf("FS Registrations: %+v\n", fs_registrations)
 
-		//last_active_registrations := kv_backend.Read("")
+		last_active_registrations, err := kv_backend.Read("", true)
+		if err != nil {
+			if err.Error() == "KEY_NOT_FOUND" {
+				log.Printf("No active registrations found within K/V backend. Clean slate.\n")
+			} else {
+				log.Fatalf("Error reading from K/V Backend: %s\n", err)
+			}
+		}
+		log.Printf("last_active_registrations: %+v\n", last_active_registrations)
 
 		// Sleep between syncs, this is run in a goroutine.
 		log.Printf("syncRegistrations(): Finished, sleeping for %d seconds.\n", sync_interval)
@@ -144,6 +151,7 @@ func main() {
 			"backend": arg_config.KvBackend,
 			"host":    arg_config.KvHost,
 			"port":    strconv.Itoa(int(arg_config.KvPort)),
+			"prefix":  arg_config.KvPrefix,
 		})
 		if err != nil {
 			log.Fatal(err)
@@ -168,9 +176,9 @@ func main() {
 		go event_client.Handle()
 		go sync_client.Handle()
 		wg.Add(1)
-		go watchForRegistrationEvents(&event_client, arg_config.FreeswitchAdvertiseIp, arg_config.FreeswitchAdvertisePort, &kv_backend, &wg)
+		go watchForRegistrationEvents(&event_client, arg_config.FreeswitchAdvertiseIp, arg_config.FreeswitchAdvertisePort, kv_backend, &wg)
 		wg.Add(1)
-		go syncRegistrations(&sync_client, arg_config.FreeswitchSofiaProfiles, arg_config.FreeswitchAdvertiseIp, arg_config.FreeswitchAdvertisePort, arg_config.SyncInterval, &kv_backend, &wg)
+		go syncRegistrations(&sync_client, arg_config.FreeswitchSofiaProfiles, arg_config.FreeswitchAdvertiseIp, arg_config.FreeswitchAdvertisePort, arg_config.SyncInterval, kv_backend, &wg)
 
 		wg.Wait()
 
