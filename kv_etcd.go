@@ -38,36 +38,41 @@ func NewKvBackendEtcd(conf map[string]string) (KvBackend, error) {
 	}, nil
 }
 
-// If the key is a prefix (recursive lookup), set recursive = true
-func (k *KvBackendEtcd) Read(key string, recursive bool) (*string, error) {
+func (k *KvBackendEtcd) UseKey(key string) string {
 	use_key := k.Prefix
 	if len(key) > 0 {
-		use_key = fmt.Sprintf("/%s", key)
+		use_key = fmt.Sprintf("%s/%s", use_key, key)
 	}
+	return use_key
+}
+
+// If the key is a prefix (recursive lookup), set recursive = true
+// Results will be key/value in a map.
+func (k *KvBackendEtcd) Read(key string, recursive bool) (*map[string]string, error) {
+	use_key := k.UseKey(key)
 	log.Printf("etcd.Read(): Getting '%s' key value (recursive: %t)", use_key, recursive)
 	// TODO: parse option for recursive to .Get()
 	resp, err := k.Kapi.Get(context.Background(), use_key, nil)
+	var results map[string]string
 	if err != nil {
 		if strings.Contains(err.Error(), "100: Key not found") {
-			return new(string), errors.New("KEY_NOT_FOUND")
+			return &results, errors.New("KEY_NOT_FOUND")
 		} else {
-			return new(string), err
+			return &results, err
 		}
 	} else {
 		// print common key info
 		log.Printf("Get is done. Metadata is %q\n", resp)
 		// print value
 		log.Printf("%q key has %q value\n", resp.Node.Key, resp.Node.Value)
+		log.Printf("Count of child nodes: %d\n", len(resp.Node.Nodes))
 	}
 	// TODO: parse out etcd_client.Node, get a string value?
-	return new(string), nil
+	return &results, nil
 }
 
 func (k *KvBackendEtcd) Write(key string, value string, ttl int) error {
-	use_key := k.Prefix
-	if len(key) > 0 {
-		use_key = fmt.Sprintf("/%s", key)
-	}
+	use_key := k.UseKey(key)
 	log.Printf("etcd.Write(): Writing '%s' key value", use_key)
 	resp, err := k.Kapi.Set(context.Background(), use_key, value, nil)
 	if err != nil {
@@ -80,10 +85,7 @@ func (k *KvBackendEtcd) Write(key string, value string, ttl int) error {
 }
 
 func (k *KvBackendEtcd) Delete(key string) error {
-	use_key := k.Prefix
-	if len(key) > 0 {
-		use_key = fmt.Sprintf("/%s", key)
-	}
+	use_key := k.UseKey(key)
 	log.Printf("etcd.Delete(): Deleting '%s' key value", use_key)
 	resp, err := k.Kapi.Delete(context.Background(), use_key, nil)
 	if err != nil {

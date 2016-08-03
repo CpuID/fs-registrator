@@ -8,7 +8,7 @@ import (
 )
 
 type KvBackend interface {
-	Read(key string, recursive bool) (*string, error)
+	Read(key string, recursive bool) (*map[string]string, error)
 	Write(key string, value string, ttl int) error
 	Delete(key string) error
 }

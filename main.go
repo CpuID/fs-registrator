@@ -153,7 +153,7 @@ func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advert
 		}
 		log.Printf("last_active_registrations: %+v\n", raw_last_active_registrations)
 
-		last_active_registrations := generateRegistrations(raw_last_active_registrations, advertise_ip, advertise_port)
+		last_active_registrations := generateRegistrations(generateRegistrationListForThisInstance(raw_last_active_registrations, advertise_ip, advertise_port), advertise_ip, advertise_port)
 		current_active_registrations := generateRegistrations(raw_current_active_registrations, advertise_ip, advertise_port)
 
 		add_registrations, remove_registrations, err := reconcileRegistrations(advertise_ip, advertise_port, last_active_registrations, current_active_registrations)
