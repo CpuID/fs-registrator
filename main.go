@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/0x19/goesl"
-	"github.com/kr/pretty"
-	"gopkg.in/urfave/cli.v1"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/0x19/goesl"
+	"github.com/kr/pretty"
+	"gopkg.in/urfave/cli.v1"
 )
 
 func main() {

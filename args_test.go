@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
-	"gopkg.in/urfave/cli.v1"
 	"reflect"
 	"testing"
+
+	"gopkg.in/urfave/cli.v1"
 )
 
 func TestParseFlags(t *testing.T) {

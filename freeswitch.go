@@ -5,11 +5,12 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"log"
+	"strings"
+
 	"github.com/0x19/goesl"
 	"github.com/paulrosania/go-charset/charset"
 	_ "github.com/paulrosania/go-charset/data"
-	"log"
-	"strings"
 )
 
 func subscribeToFreeswitchRegEvents(esl_client *goesl.Client) error {

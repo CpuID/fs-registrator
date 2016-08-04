@@ -1,10 +1,11 @@
 package main
 
 import (
-	"gopkg.in/urfave/cli.v1"
 	"log"
 	"os"
 	"strings"
+
+	"gopkg.in/urfave/cli.v1"
 )
 
 type ArgConfig struct {

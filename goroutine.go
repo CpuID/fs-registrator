@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/0x19/goesl"
 	"log"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/0x19/goesl"
 )
 
 // Both of the below functions are run within goroutines (in parallel) from main()
