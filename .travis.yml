@@ -3,7 +3,6 @@ dist: trusty
 
 language: go
 go:
-  - 1.5.4
   - 1.6.3
 
 services:
