@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/docker/libcompose/docker"
 	"github.com/docker/libcompose/project"
@@ -28,18 +30,18 @@ func teardownMain(project project.APIProject) {
 }
 
 // map["servicename-internalport"] = externalport
-func parseContainerPorts(info_set *project.InfoSet, docker_project_name string) (map[string]int, error) {
-	result := make(map[string]int)
+func parseContainerPorts(info_set *project.InfoSet, docker_project_name string) (map[string]uint, error) {
+	result := make(map[string]uint)
 	container_keys := make(map[int]string)
 	for k1, v1 := range *info_set {
-		for k2, v2 := range v1 {
+		for _, v2 := range v1 {
 			//log.Printf("k1: %d, k2: %d, v2 Key: %s, v2 Val: %s\n", k1, k2, v2.Key, v2.Value)
 			if v2.Key == "Name" {
 				container_keys[k1] = v2.Value
 			} else if v2.Key == "Ports" {
 				// If we don't have the container name already, can't proceed for it.
 				if _, ok := container_keys[k1]; ok == false {
-					return map[string]int{}, errors.New("parseContainerPorts() : Found 'Ports' for a Container Key without a 'Name' attribute prior, cannot proceed.")
+					return map[string]uint{}, errors.New("parseContainerPorts() : Found 'Ports' for a Container Key without a 'Name' attribute prior, cannot proceed.")
 				}
 				// v2.Value == 2380/tcp, 0.0.0.0:32777->2379/tcp
 				// Parse out the ports that are exposed publicly.
@@ -50,31 +52,31 @@ func parseContainerPorts(info_set *project.InfoSet, docker_project_name string) 
 						split_host_port := strings.Split(v3, "->")
 						// We ignore protocol right now, and assume that the executor that uses this knows what protocol it will use (TCP/UDP).
 						if len(split_host_port) != 2 {
-							return map[string]int{}, errors.New(fmt.Sprintf(
+							return map[string]uint{}, errors.New(fmt.Sprintf(
 								"parseContainerPorts() : Splitting host/ports '%s' (by ->) expected 2 results, got %d, cannot proceed.",
 								v3, len(split_host_port)))
 						}
 						split_external_host_port := strings.Split(split_host_port[0], ":")
 						if len(split_external_host_port) != 2 {
-							return map[string]int{}, errors.New(fmt.Sprintf(
+							return map[string]uint{}, errors.New(fmt.Sprintf(
 								"parseContainerPorts() : Splitting external host/port '%s' (by :) expected 2 results, got %d, cannot proceed.",
 								split_host_port[0], len(split_external_host_port)))
 						}
 						split_internal_port := strings.Split(split_host_port[1], "/")
 						if len(split_internal_port) != 2 {
-							return map[string]int{}, errors.New(fmt.Sprintf(
+							return map[string]uint{}, errors.New(fmt.Sprintf(
 								"parseContainerPorts() : Splitting internal port '%s' (by /) expected 2 results, got %d, cannot proceed.",
 								split_host_port[1], len(split_internal_port)))
 						}
 						// TODOLATER: validate the pieces of split_host and split_port?
 						external_port_int, err := strconv.Atoi(split_external_host_port[1])
 						if err != nil {
-							return map[string]int{}, errors.New(fmt.Sprintf(
+							return map[string]uint{}, errors.New(fmt.Sprintf(
 								"parseContainerPorts() : Cannot convert %s to an int for external port, cannot proceed. Error: %s",
 								split_external_host_port[1], err.Error()))
 						}
 						use_service_name := strings.Replace(container_keys[k1], fmt.Sprintf("%s_", docker_project_name), "", 1)
-						result[fmt.Sprintf("%s-%s", use_service_name, split_internal_port[0])] = external_port_int
+						result[fmt.Sprintf("%s-%s", use_service_name, split_internal_port[0])] = uint(external_port_int)
 					}
 				}
 			}
@@ -84,7 +86,26 @@ func parseContainerPorts(info_set *project.InfoSet, docker_project_name string) 
 	return result, nil
 }
 
-var dockerContainerPorts map[string]int
+// Performs a poor mans health check on the underlying container ports, make sure the services are up before proceeding.
+// TODOLATER: try use the new HEALTHCHECK attribute in Docker 1.12, would need to pull in a docker api client lib to retrieve
+// inspect() most likely.
+func pollContainerPortHealth(host string, port uint, timeout_sec uint) error {
+	log.Printf("Attempting connection to %s:%d...", host, port)
+	for i := uint(0); i < timeout_sec; i++ {
+		conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
+		if err != nil {
+			fmt.Printf(".")
+		} else {
+			conn.Close()
+			return nil
+		}
+		time.Sleep(time.Second)
+	}
+	fmt.Printf(" Timeout reached.\n")
+	return errors.New(fmt.Sprintf("Connection attempt to %s:%d timed out after %d seconds.", host, port, timeout_sec))
+}
+
+var dockerContainerPorts map[string]uint
 
 func TestMain(m *testing.M) {
 	docker_project_name := "fsregistrator"
@@ -111,24 +132,27 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer teardownMain(project)
 
 	ps, err = project.Ps(context.Background(), false)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// TODO: we need to try use the HEALTHCHECK feature in Docker 1.12 so that we can verify FreeSWITCH is up
-	// and responding to TCP 8021
-
 	container_ports, err := parseContainerPorts(&ps, docker_project_name)
 	if err != nil {
 		log.Fatal(err)
 	}
 	dockerContainerPorts = container_ports
+	// Attempt to connect to all the ports before proceeding.
+	for _, v := range dockerContainerPorts {
+		err = pollContainerPortHealth("127.0.0.1", v, uint(20))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	exitcode := m.Run()
-
-	teardownMain(project)
 
 	os.Exit(exitcode)
 }
