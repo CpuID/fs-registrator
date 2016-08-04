@@ -34,10 +34,10 @@ func generateLastRegistrationsType(input *map[string]string) (*Registrations, er
 
 // Parses out multiple K/V backend result sets into just the user@domain list,
 // and filter on this advertise IP and port only (this instance).
-func generateRegistrationListForThisInstance(input Registrations, advertise_ip string, advertise_port int) *Registrations {
-	var result Registrations
-	for k, v := range input {
-		if v.Host == advertise_ip && v.Port == advertise_port {
+func generateRegistrationListForThisInstance(input *Registrations, advertise_ip string, advertise_port int) *Registrations {
+	result := make(Registrations)
+	for k, v := range *input {
+		if v.Host != advertise_ip || v.Port != advertise_port {
 			continue
 		}
 		result[k] = v
