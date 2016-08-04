@@ -38,6 +38,14 @@ func NewKvBackendEtcd(conf map[string]string) (KvBackend, error) {
 	}, nil
 }
 
+func (k *KvBackendEtcd) BackendName() string {
+	return "etcd"
+}
+
+func (k *KvBackendEtcd) GetPrefix() string {
+	return k.Prefix
+}
+
 func (k *KvBackendEtcd) UseKey(key string) string {
 	use_key := k.Prefix
 	if len(key) > 0 {
