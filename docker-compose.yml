@@ -1,0 +1,15 @@
+version: '2'
+
+services:
+  # Used by test suite as a real FreeSWITCH instance.
+  freeswitch:
+    image: cpuid/freeswitch-fs-registrator:1.6.9
+    ports:
+      - "8021"
+
+  # Used by test suite as a real etcd K/V backend.
+  etcd:
+    image: quay.io/coreos/etcd:v3.0.4
+    command: /usr/local/bin/etcd --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://localhost:2379
+    ports:
+      - "2379"

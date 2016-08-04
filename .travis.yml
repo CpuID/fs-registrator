@@ -1,7 +1,13 @@
+sudo: required
+dist: trusty
+
 language: go
 go:
   - 1.5.4
   - 1.6.3
+
+services:
+  - docker
 
 before_install:
   - go get github.com/mattn/goveralls

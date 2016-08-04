@@ -78,6 +78,7 @@ func TestGetKvBackendValueJsonType(t *testing.T) {
 
 func TestGetKvBackendValueJsonString(t *testing.T) {
 	expected_result := "{\"host\":\"10.4.5.6\",\"port\":5065}"
+	// Test a valid entry
 	result, err := getKvBackendValueJsonString(KvBackendValue{
 		Host: "10.4.5.6",
 		Port: 5065,
@@ -88,5 +89,15 @@ func TestGetKvBackendValueJsonString(t *testing.T) {
 	if reflect.DeepEqual(result, expected_result) != true {
 		t.Error("Expected", expected_result, "got", result)
 	}
-	// TODOLATER: test a failing json.Marshal input.
+	// And a failure
+	// TODOLATER: find something that will fail this, that still builds.
+	/*
+		_, err = getKvBackendValueJsonString(KvBackendValue{
+			Host:      "10.4.5.6",
+			Port:      5065,
+		})
+		if err == nil {
+			t.Fatal("Expected an error, got nil")
+		}
+	*/
 }
