@@ -20,9 +20,9 @@ func generateCurrentRegistrationsType(users *[]string, advertise_ip string, adve
 }
 
 // The format we receive from a K/V backend.
-func generateLastRegistrationsType(input map[string]string) (*Registrations, error) {
-	var result Registrations
-	for k, v := range input {
+func generateLastRegistrationsType(input *map[string]string) (*Registrations, error) {
+	result := make(Registrations)
+	for k, v := range *input {
 		parse_v, err := getKvBackendValueJsonType(v)
 		if err != nil {
 			return new(Registrations), err

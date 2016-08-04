@@ -156,7 +156,7 @@ func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advert
 		}
 		log.Printf("last_active_registrations: %+v\n", raw_last_active_registrations)
 
-		last_active_registrations_typed, err := generateLastRegistrationsType(*raw_last_active_registrations)
+		last_active_registrations_typed, err := generateLastRegistrationsType(raw_last_active_registrations)
 		if err != nil {
 			log.Fatal(err)
 		}
