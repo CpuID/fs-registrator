@@ -156,8 +156,12 @@ func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advert
 		}
 		log.Printf("last_active_registrations: %+v\n", raw_last_active_registrations)
 
-		last_active_registrations := generateRegistrations(generateRegistrationListForThisInstance(raw_last_active_registrations, advertise_ip, advertise_port), advertise_ip, advertise_port)
-		current_active_registrations := generateRegistrations(raw_current_active_registrations, advertise_ip, advertise_port)
+		last_active_registrations_typed, err := generateLastRegistrationsType(*raw_last_active_registrations)
+		if err != nil {
+			log.Fatal(err)
+		}
+		last_active_registrations := generateRegistrationListForThisInstance(*last_active_registrations_typed, advertise_ip, advertise_port)
+		current_active_registrations := generateCurrentRegistrationsType(raw_current_active_registrations, advertise_ip, advertise_port)
 
 		add_registrations, remove_registrations, err := reconcileRegistrations(advertise_ip, advertise_port, last_active_registrations, current_active_registrations)
 		if err != nil {
@@ -165,11 +169,16 @@ func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advert
 			log.Fatal(err)
 		}
 
-		for k_add, v_add := range add_registrations {
+		for k_add, v_add := range *add_registrations {
+			v_add_json_string, err := getKvBackendValueJsonString(v_add)
+			if err != nil {
+				// TODO: return an error channel or something?
+				log.Fatal(err)
+			}
 			// TODO: move the TTL out to somewhere more reusable
-			err = kv_backend.Write(k_add, v_add, 300)
+			err = kv_backend.Write(k_add, v_add_json_string, 300)
 		}
-		for _, v_remove := range remove_registrations {
+		for _, v_remove := range *remove_registrations {
 			err = kv_backend.Delete(v_remove)
 		}
 

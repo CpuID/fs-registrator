@@ -75,9 +75,9 @@ func getKvBackendValueType(ip string, port int) KvBackendValue {
 	}
 }
 
-func getKvBackendValueJsonType(input []byte) (KvBackendValue, error) {
+func getKvBackendValueJsonType(input string) (KvBackendValue, error) {
 	var result KvBackendValue
-	err := json.Unmarshal(input, &result)
+	err := json.Unmarshal([]byte(input), &result)
 	if err != nil {
 		return KvBackendValue{}, err
 	}

@@ -72,8 +72,7 @@ type FsRegProfileRegistration struct {
 	MwiAccount   string  `xml:"mwi-account"`
 }
 
-// TODO: some kind of return dataset.
-func getFreeswitchRegistrations(esl_client *goesl.Client, sofia_profiles []string) ([]string, error) {
+func getFreeswitchRegistrations(esl_client *goesl.Client, sofia_profiles []string) (*[]string, error) {
 	var results []string
 	for _, sofia_profile := range sofia_profiles {
 		log.Printf("getFreeswitchRegistrations(): Fetching Registrations for Sofia Profile '%s'.\n", sofia_profile)
@@ -86,7 +85,7 @@ func getFreeswitchRegistrations(esl_client *goesl.Client, sofia_profiles []strin
 				log.Printf("Error while reading Freeswitch message: %s", err.Error())
 				continue
 			}
-			return []string{}, err
+			return new([]string), err
 		}
 		// TODOLATER: do we want to check the msg.Headers at all?
 		var parsed_msg FsRegProfile
@@ -95,7 +94,7 @@ func getFreeswitchRegistrations(esl_client *goesl.Client, sofia_profiles []strin
 		decoder.CharsetReader = charset.NewReader
 		err = decoder.Decode(&parsed_msg)
 		if err != nil {
-			return []string{}, err
+			return new([]string), err
 		}
 		//log.Printf("Sofia Profile '%s' Registrations: %+v\n", sofia_profile, parsed_msg)
 		for _, v := range parsed_msg.Registrations {
@@ -104,5 +103,5 @@ func getFreeswitchRegistrations(esl_client *goesl.Client, sofia_profiles []strin
 			}
 		}
 	}
-	return results, nil
+	return &results, nil
 }
