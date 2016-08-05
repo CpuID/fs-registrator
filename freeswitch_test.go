@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os/exec"
 	//"reflect"
 	"testing"
 
@@ -11,12 +12,14 @@ import (
 func simulateSipRegister(user string, password string) error {
 	// TODO: implement
 	// sipsak -U -d -n -x 120 -C "sip:username@127.0.0.1:49201" -s "sip:username@192.168.99.100" -vvv -a nathans
+	// out, err := exec.Command("sipsak", "-U", "-D", "", "").Output()
 	return nil
 }
 
 func simulateSipDeregister(user string, password string) error {
 	// TODO: implement
 	// sipsak -U -d -n -x 0 -C "<sip:username@127.0.0.1:49201>;expires=0" -s "sip:username@192.168.99.100" -vvv -a nathans
+	// out, err := exec.Command("sipsak", "-U", "-D", "", "").Output()
 	return nil
 }
 
