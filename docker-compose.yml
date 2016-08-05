@@ -6,6 +6,9 @@ services:
     image: cpuid/freeswitch-fs-registrator:1.6.9a
     ports:
       - "8021"
+    volumes:
+      - "./test/freeswitch/acl.conf.xml:/etc/freeswitch/autoload_configs/acl.conf.xml"
+      - "./test/freeswitch/event_socket.conf.xml:/etc/freeswitch/autoload_configs/event_socket.conf.xml"
 
   # Used by test suite as a real etcd K/V backend.
   etcd:

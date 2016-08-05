@@ -1,0 +1,14 @@
+<!--
+	This config is loaded as a Docker volume at runtime, rather than being built into the image.
+	Mostly because this image is public (on the Docker Hub), and its a security risk opening it up.
+-->
+<configuration name="event_socket.conf" description="Socket Client">
+  <settings>
+    <param name="nat-map" value="false"/>
+    <param name="listen-ip" value="::"/>
+    <param name="listen-port" value="8021"/>
+    <param name="password" value="ClueCon"/>
+    <param name="apply-inbound-acl" value="event_socket_local"/>
+    <param name="stop-on-bind-error" value="true"/>
+  </settings>
+</configuration>

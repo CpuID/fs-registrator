@@ -180,5 +180,7 @@ func TestMain(m *testing.M) {
 
 	exitcode := m.Run()
 
+	teardownMain(project)
+
 	os.Exit(exitcode)
 }
