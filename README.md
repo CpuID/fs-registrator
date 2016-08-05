@@ -54,3 +54,14 @@ GLOBAL OPTIONS:
 # Building
 
 `go get -d && go build` should produce a single executable. Binary releases are also available [here](https://github.com/CpuID/ec2-sg-mangler/releases)
+
+# Running Tests
+
+Some of the tests rely on [Docker](https://github.com/docker/docker) containers to provide a real FreeSWITCH/etcd instances. Ensure you have Docker + Docker Compose installed, then run:
+
+```
+docker-compose pull
+go test
+```
+
+Tests requiring Docker use [libcompose](https://github.com/docker/libcompose) in [main_test.go](https://github.com/CpuID/fs-registrator/blob/master/main_test.go)

@@ -3,7 +3,7 @@ version: '2'
 services:
   # Used by test suite as a real FreeSWITCH instance.
   freeswitch:
-    image: cpuid/freeswitch-fs-registrator:1.6.9
+    image: cpuid/freeswitch-fs-registrator:1.6.9a
     ports:
       - "8021"
 

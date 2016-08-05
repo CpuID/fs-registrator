@@ -29,6 +29,24 @@ func teardownMain(project project.APIProject) {
 	}
 }
 
+// Fetches the IP from DOCKER_HOST env var.
+// If it is not set, assume its a local install and return 127.0.0.1
+func getDockerHost() (string, error) {
+	docker_host_env := os.Getenv("DOCKER_HOST")
+	if len(docker_host_env) == 0 {
+		log.Printf("Assuming local Docker installation (127.0.0.1)\n")
+		return "127.0.0.1", nil
+	}
+	// Example: tcp://192.168.99.100:2376
+	split_docker_host := strings.Split(docker_host_env, ":")
+	if len(split_docker_host) != 3 {
+		return "", errors.New(fmt.Sprintf("Invalid format for DOCKER_HOST environment variable, expected proto://host:port, got %s", docker_host_env))
+	}
+	docker_host := strings.Replace(split_docker_host[1], "/", "", 2)
+	log.Printf("DOCKER_HOST environment variable set, using %s\n", docker_host)
+	return docker_host, nil
+}
+
 // map["servicename-internalport"] = externalport
 func parseContainerPorts(info_set *project.InfoSet, docker_project_name string) (map[string]uint, error) {
 	result := make(map[string]uint)
@@ -97,6 +115,7 @@ func pollContainerPortHealth(host string, port uint, timeout_sec uint) error {
 			fmt.Printf(".")
 		} else {
 			conn.Close()
+			fmt.Printf(" Success.\n")
 			return nil
 		}
 		time.Sleep(time.Second)
@@ -105,6 +124,7 @@ func pollContainerPortHealth(host string, port uint, timeout_sec uint) error {
 	return errors.New(fmt.Sprintf("Connection attempt to %s:%d timed out after %d seconds.", host, port, timeout_sec))
 }
 
+var dockerHost string
 var dockerContainerPorts map[string]uint
 
 func TestMain(m *testing.M) {
@@ -139,6 +159,12 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
+	docker_host, err := getDockerHost()
+	if err != nil {
+		log.Fatal(err)
+	}
+	dockerHost = docker_host
+
 	container_ports, err := parseContainerPorts(&ps, docker_project_name)
 	if err != nil {
 		log.Fatal(err)
@@ -146,7 +172,7 @@ func TestMain(m *testing.M) {
 	dockerContainerPorts = container_ports
 	// Attempt to connect to all the ports before proceeding.
 	for _, v := range dockerContainerPorts {
-		err = pollContainerPortHealth("127.0.0.1", v, uint(20))
+		err = pollContainerPortHealth(docker_host, v, uint(20))
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -64,7 +64,7 @@ func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, a
 	log.Printf("watchForRegistrationEvents(): Finished.\n")
 }
 
-func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advertise_ip string, advertise_port int, sync_interval uint32, kv_backend KvBackend, wg *sync.WaitGroup) {
+func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advertise_ip string, advertise_port int, sync_interval uint32, kv_backend KvBackend, wg *sync.WaitGroup, once bool) {
 	defer wg.Done()
 	for {
 		log.Printf("syncRegistrations(): Starting.\n")
@@ -110,6 +110,12 @@ func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advert
 		}
 		for _, v_remove := range *remove_registrations {
 			err = kv_backend.Delete(v_remove)
+		}
+
+		// Used for test suite, to only do a once-off sync.
+		if once == true {
+			log.Printf("syncRegistrations(): Once off mode enabled, finished.\n")
+			return
 		}
 
 		// Sleep between syncs, this is run in a goroutine.
