@@ -8,6 +8,18 @@ import (
 	"github.com/0x19/goesl"
 )
 
+func simulateSipRegister(user string, password string) error {
+	// TODO: implement
+	// sipsak -U -d -n -x 120 -C "sip:username@127.0.0.1:49201" -s "sip:username@192.168.99.100" -vvv -a nathans
+	return nil
+}
+
+func simulateSipDeregister(user string, password string) error {
+	// TODO: implement
+	// sipsak -U -d -n -x 0 -C "<sip:username@127.0.0.1:49201>;expires=0" -s "sip:username@192.168.99.100" -vvv -a nathans
+	return nil
+}
+
 func getTestEslClient(t *testing.T) *goesl.Client {
 	if _, ok := dockerContainerPorts["freeswitch_1-8021"]; ok == false {
 		t.Fatal("Docker Container port for FreeSWITCH ESL not found in dockerContainerPorts, did the container start?")

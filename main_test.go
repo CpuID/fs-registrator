@@ -177,6 +177,8 @@ func TestMain(m *testing.M) {
 			log.Fatal(err)
 		}
 	}
+	// Sleep for 1 second before proceeding, make sure event socket is alive and kicking.
+	time.Sleep(1 * time.Second)
 
 	exitcode := m.Run()
 
