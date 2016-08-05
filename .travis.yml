@@ -25,5 +25,5 @@ before_install:
 script:
   - go test -covermode=count -coverprofile=profile.cov -v ./...
   - $HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=travis-ci
-  - docker ps
-  - docker logs fsregistrator_freeswitch_1
+  # - docker ps
+  # - docker logs fsregistrator_freeswitch_1

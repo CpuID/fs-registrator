@@ -27,8 +27,11 @@ func TestWatchForRegistrationEvents(t *testing.T) {
 }
 
 func TestSyncRegistrations(t *testing.T) {
-	// TODO: send a registration to freeswitch
 	//test_esl_client := getTestEslClient(t)
+	//err := simulateSipRegister(dockerHost, uint(5060), "", "", t)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
 	//test_kv_backend := getTestKvBackend(t)
 	// TODO: populate an entry for the same advertise ip/port that will get removed as part of a sync
 	//var test_wg sync.WaitGroup

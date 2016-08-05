@@ -177,7 +177,8 @@ func TestMain(m *testing.M) {
 			log.Fatal(err)
 		}
 	}
-	// Sleep for 30 seconds before proceeding, make sure event socket is alive and kicking.
+	// Sleep for 30 seconds before proceeding, to calm down Travis.
+	// https://github.com/CpuID/fs-registrator/issues/4
 	time.Sleep(30 * time.Second)
 
 	exitcode := m.Run()
