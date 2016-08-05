@@ -152,7 +152,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer teardownMain(project)
+	//defer teardownMain(project)
 
 	ps, err = project.Ps(context.Background(), false)
 	if err != nil {
@@ -182,7 +182,7 @@ func TestMain(m *testing.M) {
 
 	exitcode := m.Run()
 
-	teardownMain(project)
+	//teardownMain(project)
 
 	os.Exit(exitcode)
 }
