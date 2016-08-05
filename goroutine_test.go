@@ -7,13 +7,13 @@ import (
 )
 
 func getTestKvBackend(t *testing.T) KvBackend {
-	if _, ok := dockerContainerPorts["etcd_1-2379"]; ok == false {
+	if _, ok := dockerContainerPorts["etcd_1-2379/tcp"]; ok == false {
 		t.Fatal("Docker Container port for etcd not found in dockerContainerPorts, did the container start?")
 	}
 	test_kv_backend, err := CreateKvBackend(map[string]string{
 		"backend": "etcd",
 		"host":    dockerHost,
-		"port":    strconv.Itoa(int(dockerContainerPorts["etcd_1-2379"])),
+		"port":    strconv.Itoa(int(dockerContainerPorts["etcd_1-2379/tcp"])),
 		"prefix":  "fs_registrations",
 	})
 	if err != nil {

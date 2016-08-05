@@ -10,9 +10,17 @@ import (
 	"github.com/0x19/goesl"
 )
 
-func simulateSipRegister(host string, port uint, user string, password string, t *testing.T) error {
-	// sipsak -U -d -n -x 120 -C "sip:username@127.0.0.1:49201" -s "sip:username@192.168.99.100" -vvv -a nathans
-	out, err := exec.Command("sipsak", "-U", "-D", "-n", "-x", "120", "-C", fmt.Sprintf("sip:%s@127.0.0.1:49201", user), "-s", fmt.Sprintf("sip:%s@%s:%d", user, host, port), "-v", "-a", password).Output()
+func checkSipPortIsAvailable(t *testing.T) {
+	if _, ok := dockerContainerPorts["freeswitch_1-5060/udp"]; ok == false {
+		t.Fatal("Docker Container port for FreeSWITCH SIP not found in dockerContainerPorts, did the container start?")
+	}
+	log.Printf("checkSipPortIsAvailable() : Docker Container FreeSWITCH SIP Port - %d\n", uint(dockerContainerPorts["freeswitch_1-5060/udp"]))
+}
+
+func simulateSipRegister(host string, port uint, user string, password string, contact_port uint, t *testing.T) error {
+	// sipsak -U -d -n -x 120 -C "sip:username@127.0.0.1:49201" -s "sip:username@192.168.99.100" -vvv -a somepassword
+	out, err := exec.Command("/usr/local/bin/sipsak", "-U", "-D", "-n", "-x", "120", "-C", fmt.Sprintf("\"sip:%s@127.0.0.1:%d\"", user, contact_port), "-s", fmt.Sprintf("\"sip:%s@%s:%d\"", user, host, port), "-v", "-a", password).CombinedOutput()
+	// If SIP message fails to get a 200 OK back, a non-zero exit code will be returned.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,9 +28,10 @@ func simulateSipRegister(host string, port uint, user string, password string, t
 	return nil
 }
 
-func simulateSipDeregister(host string, port uint, user string, password string, t *testing.T) error {
-	// sipsak -U -d -n -x 0 -C "<sip:username@127.0.0.1:49201>;expires=0" -s "sip:username@192.168.99.100" -vvv -a nathans
-	out, err := exec.Command("sipsak", "-U", "-D", "-n", "-x", "0", "-C", fmt.Sprintf("<sip:%s@127.0.0.1:49201>;expires=0", user), "-s", fmt.Sprintf("sip:%s@%s:%d", user, host, port), "-v", "-a", password).Output()
+func simulateSipDeregister(host string, port uint, user string, password string, contact_port uint, t *testing.T) error {
+	// sipsak -U -d -n -x 0 -C "<sip:username@127.0.0.1:49201>;expires=0" -s "sip:username@192.168.99.100" -vvv -a somepassword
+	out, err := exec.Command("sipsak", "-U", "-D", "-n", "-x", "0", "-C", fmt.Sprintf("<sip:%s@127.0.0.1:%d>;expires=0", user, contact_port), "-s", fmt.Sprintf("sip:%s@%s:%d", user, host, port), "-v", "-a", password).CombinedOutput()
+	// If SIP message fails to get a 200 OK back, a non-zero exit code will be returned.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,11 +40,11 @@ func simulateSipDeregister(host string, port uint, user string, password string,
 }
 
 func getTestEslClient(t *testing.T) *goesl.Client {
-	if _, ok := dockerContainerPorts["freeswitch_1-8021"]; ok == false {
+	if _, ok := dockerContainerPorts["freeswitch_1-8021/tcp"]; ok == false {
 		t.Fatal("Docker Container port for FreeSWITCH ESL not found in dockerContainerPorts, did the container start?")
 	}
-	log.Printf("getTestEslClient() : Docker Container FreeSWITCH ESL Port - %d\n", uint(dockerContainerPorts["freeswitch_1-8021"]))
-	test_client, err := goesl.NewClient(dockerHost, uint(dockerContainerPorts["freeswitch_1-8021"]), "ClueCon", int(5))
+	log.Printf("getTestEslClient() : Docker Container FreeSWITCH ESL Port - %d\n", uint(dockerContainerPorts["freeswitch_1-8021/tcp"]))
+	test_client, err := goesl.NewClient(dockerHost, uint(dockerContainerPorts["freeswitch_1-8021/tcp"]), "ClueCon", int(5))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,6 +52,8 @@ func getTestEslClient(t *testing.T) *goesl.Client {
 }
 
 /*
+// TODO: we may have to rely on the tests in goroutine_test.go for this one,
+// as its blocking and would need to be run in a goroutine otherwise. could possibly do it with channels standalone...
 func TestSubscribeToFreeswitchRegEvents(t *testing.T) {
 	test_client := getTestEslClient(t)
 	err := subscribeToFreeswitchRegEvents(test_client)
@@ -106,13 +117,18 @@ func TestGetFreeswitchRegistrations(t *testing.T) {
 	//expected_result := []string{
 	// TODO: fill in
 	//}
-	test_client := getTestEslClient(t)
-	_, err := getFreeswitchRegistrations(test_client, []string{
-	// TODO: fill in
-	})
-	if err != nil {
-		t.Error("Expected nil error, got", err)
-	}
+	//test_client := getTestEslClient(t)
+	checkSipPortIsAvailable(t)
+	// TODO: fix exit status 2 when running the below
+	//simulateSipRegister(dockerHost, uint(dockerContainerPorts["freeswitch_1-5060/udp"]), "1000", "1234", uint(49201), t)
+	/*
+		TODO: work out why getFreeswitchRegistrations() hangs waiting for messages, should receive a response correctly...
+		result, err := getFreeswitchRegistrations(test_client, []string{"internal"})
+		if err != nil {
+			t.Error("Expected nil error, got", err)
+		}
+		log.Printf("Test FS Registrations: %+v\n", result)
+	*/
 	/*
 		TODO: only enable once we have data in expected_result and result, otherwise its permafail due to pointers.
 		if reflect.DeepEqual(result, expected_result) != true {

@@ -5,6 +5,7 @@ services:
   freeswitch:
     image: cpuid/freeswitch-fs-registrator:1.6.9a
     ports:
+      - "5060/udp"
       - "8021"
     volumes:
       - "./test/freeswitch/acl.conf.xml:/etc/freeswitch/autoload_configs/acl.conf.xml"
