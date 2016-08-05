@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 	//"reflect"
@@ -9,17 +10,23 @@ import (
 	"github.com/0x19/goesl"
 )
 
-func simulateSipRegister(user string, password string) error {
-	// TODO: implement
+func simulateSipRegister(host string, port uint, user string, password string, t *testing.T) error {
 	// sipsak -U -d -n -x 120 -C "sip:username@127.0.0.1:49201" -s "sip:username@192.168.99.100" -vvv -a nathans
-	// out, err := exec.Command("sipsak", "-U", "-D", "", "").Output()
+	out, err := exec.Command("sipsak", "-U", "-D", "-n", "-x", "120", "-C", fmt.Sprintf("sip:%s@127.0.0.1:49201", user), "-s", fmt.Sprintf("sip:%s@%s:%d", user, host, port), "-v", "-a", password).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.Printf("SIP Register Output: %s\n", out)
 	return nil
 }
 
-func simulateSipDeregister(user string, password string) error {
-	// TODO: implement
+func simulateSipDeregister(host string, port uint, user string, password string, t *testing.T) error {
 	// sipsak -U -d -n -x 0 -C "<sip:username@127.0.0.1:49201>;expires=0" -s "sip:username@192.168.99.100" -vvv -a nathans
-	// out, err := exec.Command("sipsak", "-U", "-D", "", "").Output()
+	out, err := exec.Command("sipsak", "-U", "-D", "-n", "-x", "0", "-C", fmt.Sprintf("<sip:%s@127.0.0.1:49201>;expires=0", user), "-s", fmt.Sprintf("sip:%s@%s:%d", user, host, port), "-v", "-a", password).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.Printf("SIP Deregister Output: %s\n", out)
 	return nil
 }
 

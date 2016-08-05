@@ -15,12 +15,14 @@ before_install:
   - sudo apt-get update
   - sudo apt-key update
   - sudo apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install docker-engine=1.11.1-0~precise
+  - docker version
+  # Sipsak for simulating SIP Register/Deregister
+  - sudo apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install sipsak
   # Stuff for Golang
   - go get github.com/mattn/goveralls
   - go get golang.org/x/tools/cmd/cover
 
 script:
-  - docker version
   - go test -covermode=count -coverprofile=profile.cov -v ./...
   - $HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=travis-ci
   - docker ps
