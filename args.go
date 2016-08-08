@@ -1,8 +1,8 @@
 package main
 
 import (
-	"log"
-	"os"
+	"errors"
+	"fmt"
 	"strings"
 
 	"gopkg.in/urfave/cli.v1"
@@ -25,26 +25,20 @@ type ArgConfig struct {
 	SyncInterval uint32
 }
 
-func parseFlags(c *cli.Context) *ArgConfig {
+func parseFlags(c *cli.Context) (*ArgConfig, error) {
 	var result ArgConfig
 
 	for _, v := range []string{"fshost", "fspassword", "fsprofiles", "fsadvertiseip", "kvhost", "kvprefix"} {
 		if len(c.String(v)) == 0 {
-			log.Printf("Error: --%s must not be empty.\n\n", v)
-			cli.ShowAppHelp(c)
-			os.Exit(1)
+			return new(ArgConfig), errors.New(fmt.Sprintf("Error: --%s must not be empty.", v))
 		}
 	}
 	for _, v := range []string{"fsport", "fsadvertiseport", "kvport"} {
 		if c.Int(v) <= 0 {
-			log.Printf("Error: --%s must not be 0 (or empty).\n\n", v)
-			cli.ShowAppHelp(c)
-			os.Exit(1)
+			return new(ArgConfig), errors.New(fmt.Sprintf("Error: --%s must not be 0 (or empty).", v))
 		}
 		if c.Int(v) > 65536 {
-			log.Printf("Error: --%s must be below 65536.\n\n", v)
-			cli.ShowAppHelp(c)
-			os.Exit(1)
+			return new(ArgConfig), errors.New(fmt.Sprintf("Error: --%s must be below 65536.", v))
 		}
 	}
 	result.FreeswitchHost = c.String("fshost")
@@ -58,20 +52,16 @@ func parseFlags(c *cli.Context) *ArgConfig {
 
 	available_backends := availableKvBackends()
 	if stringInSlice(c.String("kvbackend"), available_backends) != true {
-		log.Printf("Error: --kvbackend must be one of: %s\n\n", strings.Join(available_backends, ", "))
-		cli.ShowAppHelp(c)
-		os.Exit(1)
+		return new(ArgConfig), errors.New(fmt.Sprintf("Error: --kvbackend must be one of: %s", strings.Join(available_backends, ", ")))
 	}
 	result.KvBackend = c.String("kvbackend")
 
 	if uint32(c.Int("syncinterval")) <= 0 {
-		log.Printf("Error: --syncinterval must not be 0 (or empty).\n\n")
-		cli.ShowAppHelp(c)
-		os.Exit(1)
+		return new(ArgConfig), errors.New("Error: --syncinterval must not be 0 (or empty).")
 	}
 	result.SyncInterval = uint32(c.Int("syncinterval"))
 
 	result.FreeswitchSofiaProfiles = strings.Split(c.String("fsprofiles"), ",")
 
-	return &result
+	return &result, nil
 }

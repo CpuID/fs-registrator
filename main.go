@@ -19,7 +19,12 @@ func main() {
 	app.Version = "0.1.0"
 	app.Usage = "FreeSWITCH Sofia-SIP Registry Bridge (Sync to Key/Value Store)"
 	app.Action = func(c *cli.Context) error {
-		arg_config := parseFlags(c)
+		arg_config, err := parseFlags(c)
+		if err != nil {
+			log.Printf("%s\n\n", err.Error())
+			cli.ShowAppHelp(c)
+			os.Exit(1)
+		}
 		log.Printf("Config: %# v\n", pretty.Formatter(arg_config))
 
 		// Setup our KV backend client.

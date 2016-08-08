@@ -29,21 +29,47 @@ func TestWatchForRegistrationEvents(t *testing.T) {
 
 func TestSyncRegistrations(t *testing.T) {
 	test_esl_client := getTestEslClient(t)
-	checkSipPortIsAvailable(t)
-	simulateSipRegister(dockerHost, uint(dockerContainerPorts["freeswitch_1-5060/udp"]), "1001", "1234", uint(49202), t)
 	test_kv_backend := getTestKvBackend(t)
-	var test_wg sync.WaitGroup
-	test_wg.Add(1)
-	syncRegistrations(test_esl_client, []string{"internal"}, "192.168.99.100", 5061, 300, test_kv_backend, &test_wg, true)
-	// TODO: get syncRegistrations() doing its job correctly, not populating data yet.
-	result, err := test_kv_backend.Read("", true)
-	// TODO: check for errors once syncRegistrations() is doing its job
-	//if err != nil {
-	//	t.Fatal(err)
+	checkSipPortIsAvailable(t)
+	test_sofia_profiles := []string{"internal"}
+	test_advertise_ip := "192.168.99.100"
+	test_advertise_port := 5061
+	test_sip_user := "1001"
+	test_sip_pass := "1234"
+	test_sip_contact_port := uint(49202)
+	// TODO: fill in
+	//expected_result1 := map[string]string{
+	//	"": "",
 	//}
+	// result 2 is an empty map
+
+	// Do a SIP register, so we have something to start with.
+	simulateSipRegister(dockerHost, uint(dockerContainerPorts["freeswitch_1-5060/udp"]), test_sip_user, test_sip_pass, test_sip_contact_port, t)
+
+	var test_wg sync.WaitGroup
+
+	// First sync, should perform an add to the K/V backend.
+	test_wg.Add(1)
+	syncRegistrations(test_esl_client, test_sofia_profiles, test_advertise_ip, test_advertise_port, 300, test_kv_backend, &test_wg, true)
+	result1, err := test_kv_backend.Read("", true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	log.Printf("TestSyncRegistrations() Read Error: %+v\n", err)
-	log.Printf("TestSyncRegistrations() Read Result: %+v\n", result)
+	log.Printf("TestSyncRegistrations() Read Result 1: %+v\n", result1)
 	// TODO: check an expected_result of the above etcd read
-	// Cleanup so other tests can make registrations if required.
-	simulateSipDeregister(dockerHost, uint(dockerContainerPorts["freeswitch_1-5060/udp"]), "1001", "1234", uint(49202), t)
+
+	// Cleanup the registration, before performing another sync.
+	simulateSipDeregister(dockerHost, uint(dockerContainerPorts["freeswitch_1-5060/udp"]), test_sip_user, test_sip_pass, test_sip_contact_port, t)
+
+	// Second sync, should perform a remove from the K/V backend.
+	test_wg.Add(1)
+	syncRegistrations(test_esl_client, test_sofia_profiles, test_advertise_ip, test_advertise_port, 300, test_kv_backend, &test_wg, true)
+	result2, err := test_kv_backend.Read("", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.Printf("TestSyncRegistrations() Read Error 2: %+v\n", err)
+	log.Printf("TestSyncRegistrations() Read Result 2: %+v\n", result2)
+	// TODO: check an expected_result of the above etcd read
 }
