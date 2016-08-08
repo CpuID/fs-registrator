@@ -123,6 +123,8 @@ func TestParseFreeswitchRegEvent(t *testing.T) {
 }
 
 func TestGetFreeswitchRegistrations(t *testing.T) {
+	// Set as parallel so it runs independently from non-parallel tests (specifically the goroutine stuff). Not ideal, but a constraint of the testing package...
+	t.Parallel()
 	expected_result := []string{
 		"1000@sip.testserver.tld",
 	}

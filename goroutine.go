@@ -9,15 +9,36 @@ import (
 	"github.com/0x19/goesl"
 )
 
-// Both of the below functions are run within goroutines (in parallel) from main()
+// All 3 of the below functions are run within goroutines (in parallel) from main()
 
-func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, advertise_port int, kv_backend KvBackend, wg *sync.WaitGroup) {
+// Just act as a /dev/null event channel receiver.
+func nullEventChannelReceiver(wg *sync.WaitGroup, event_channel <-chan struct{}) {
+	defer wg.Done()
+	for {
+		<-event_channel
+	}
+}
+
+// test_mode_max_events of 0 == run indefinitely.
+// The initial subscription counts as an event, make sure you account for it when using test_mode_max_events
+func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, advertise_port int, kv_backend KvBackend, wg *sync.WaitGroup, test_mode_max_events int, event_channel chan<- struct{}) {
 	defer wg.Done()
 	log.Printf("watchForRegistrationEvents(): Starting.\n")
+	event_counter := 0
+	if test_mode_max_events > 0 {
+		log.Printf("watchForRegistrationEvents(): Test Mode enabled, max events - %d.\n", test_mode_max_events)
+	}
+	// The events for subscribing (and the reply) don't count towards the test_mode_max_events count.
 	err := subscribeToFreeswitchRegEvents(esl_client)
 	if err != nil {
 		// TODO: log to an error channel?
 		log.Fatal(err)
+	}
+	event_channel <- struct{}{}
+	event_counter++
+	if test_mode_max_events > 0 && event_counter >= test_mode_max_events {
+		log.Printf("watchForRegistrationEvents(): Test Mode Max Events of %d reached (or exceeded) by subscription event.\n", event_counter)
+		return
 	}
 	log.Printf("watchForRegistrationEvents(): Started.\n")
 	for {
@@ -59,6 +80,13 @@ func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, a
 				// TODO: log to an error channel?
 				log.Fatal(err)
 			}
+		}
+		// Increment the event counter, send a message on the event channel that "something happened"
+		event_counter++
+		event_channel <- struct{}{}
+		if test_mode_max_events > 0 && event_counter >= test_mode_max_events {
+			log.Printf("watchForRegistrationEvents(): Test Mode Max Events of %d reached (or exceeded).\n", event_counter)
+			break
 		}
 	}
 	log.Printf("watchForRegistrationEvents(): Finished.\n")

@@ -54,11 +54,15 @@ func main() {
 		log.Printf("FreeSWITCH ESL Connections Established.")
 
 		var wg sync.WaitGroup
+		event_channel := make(chan struct{})
+		defer close(event_channel)
 
 		go event_client.Handle()
 		go sync_client.Handle()
 		wg.Add(1)
-		go watchForRegistrationEvents(&event_client, arg_config.FreeswitchAdvertiseIp, arg_config.FreeswitchAdvertisePort, kv_backend, &wg)
+		go watchForRegistrationEvents(&event_client, arg_config.FreeswitchAdvertiseIp, arg_config.FreeswitchAdvertisePort, kv_backend, &wg, 0, event_channel)
+		wg.Add(1)
+		go nullEventChannelReceiver(&wg, event_channel)
 		wg.Add(1)
 		go syncRegistrations(&sync_client, arg_config.FreeswitchSofiaProfiles, arg_config.FreeswitchAdvertiseIp, arg_config.FreeswitchAdvertisePort, arg_config.SyncInterval, kv_backend, &wg, false)
 
