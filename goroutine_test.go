@@ -44,4 +44,6 @@ func TestSyncRegistrations(t *testing.T) {
 	log.Printf("TestSyncRegistrations() Read Error: %+v\n", err)
 	log.Printf("TestSyncRegistrations() Read Result: %+v\n", result)
 	// TODO: check an expected_result of the above etcd read
+	// Cleanup so other tests can make registrations if required.
+	simulateSipDeregister(dockerHost, uint(dockerContainerPorts["freeswitch_1-5060/udp"]), "1001", "1234", uint(49202), t)
 }

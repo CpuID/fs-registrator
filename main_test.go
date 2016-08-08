@@ -186,6 +186,7 @@ func TestMain(m *testing.M) {
 	// to start.
 	// https://github.com/CpuID/fs-registrator/issues/4
 	if os.Getenv("TRAVIS") == "true" {
+		log.Printf("Sleeping for 30 seconds (to keep Travis CI happy)...\n")
 		time.Sleep(30 * time.Second)
 	} else {
 		// Give SIP an extra second to start after event_socket to be safe, since we don't
