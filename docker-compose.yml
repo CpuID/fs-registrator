@@ -10,6 +10,7 @@ services:
     volumes:
       - "./test/freeswitch/acl.conf.xml:/etc/freeswitch/autoload_configs/acl.conf.xml"
       - "./test/freeswitch/event_socket.conf.xml:/etc/freeswitch/autoload_configs/event_socket.conf.xml"
+      - "./test/freeswitch/vars.xml:/etc/freeswitch/vars.xml"
 
   # Used by test suite as a real etcd K/V backend.
   etcd:

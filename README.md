@@ -57,7 +57,13 @@ GLOBAL OPTIONS:
 
 # Running Tests
 
-Some of the tests rely on [Docker](https://github.com/docker/docker) containers to provide a real FreeSWITCH/etcd instances. Ensure you have Docker + Docker Compose installed, then run:
+You'll need to add `sip.testserver.tld` to your `/etc/hosts` file, to workaround sipsak wanting a resolveable hostname for some tests. For background, see this [mailing list post](http://lists.sip-router.org/pipermail/sr-users/2005-September/051903.html). Something like the below is fine in `/etc/hosts`:
+
+```
+127.0.0.1   sip.testserver.tld
+```
+
+Also, some of the tests rely on [Docker](https://github.com/docker/docker) containers to provide a real FreeSWITCH/etcd instances. Ensure you have Docker + Docker Compose installed, then run:
 
 ```
 docker-compose pull

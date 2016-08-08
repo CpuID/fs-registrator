@@ -98,6 +98,8 @@ func syncRegistrations(esl_client *goesl.Client, sofia_profiles []string, advert
 			// TODO: return an error channel or something?
 			log.Fatal(err)
 		}
+		log.Printf("add_registrations: %+v\n", add_registrations)
+		log.Printf("remove_registrations: %+v\n", remove_registrations)
 
 		for k_add, v_add := range *add_registrations {
 			v_add_json_string, err := getKvBackendValueJsonString(v_add)
