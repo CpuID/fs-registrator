@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	//"log"
 	"reflect"
 	"strconv"
 	"sync"
@@ -55,8 +55,8 @@ func TestSyncRegistrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	log.Printf("TestSyncRegistrations() Read Error: %+v\n", err)
-	log.Printf("TestSyncRegistrations() Read Result 1: %+v\n", result1)
+	//log.Printf("TestSyncRegistrations() Read Error: %+v\n", err)
+	//log.Printf("TestSyncRegistrations() Read Result 1: %+v\n", result1)
 	if reflect.DeepEqual(*result1, expected_result1) != true {
 		t.Error("Expected", expected_result1, "got", result1)
 	}
@@ -71,8 +71,8 @@ func TestSyncRegistrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	log.Printf("TestSyncRegistrations() Read Error 2: %+v\n", err)
-	log.Printf("TestSyncRegistrations() Read Result 2: %+v\n", result2)
+	//log.Printf("TestSyncRegistrations() Read Error 2: %+v\n", err)
+	//log.Printf("TestSyncRegistrations() Read Result 2: %+v\n", result2)
 	if len(*result2) > 0 {
 		t.Errorf("Expected a zero length result from K/V backend, got %d results: %+v\n", len(*result2), *result2)
 	}

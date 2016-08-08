@@ -50,7 +50,7 @@ func (k *KvBackendEtcd) GetPrefix() string {
 // Results will be key/value in a map.
 func (k *KvBackendEtcd) Read(key string, recursive bool) (*map[string]string, error) {
 	use_key := getKvKeyWithPrefix(k.Prefix, key)
-	log.Printf("etcd.Read(): Getting '%s' key value (recursive: %t)", use_key, recursive)
+	//log.Printf("etcd.Read(): Getting '%s' key value (recursive: %t)", use_key, recursive)
 	var get_options etcd_client.GetOptions
 	if recursive == true {
 		get_options.Recursive = true
@@ -94,7 +94,7 @@ func (k *KvBackendEtcd) Read(key string, recursive bool) (*map[string]string, er
 
 func (k *KvBackendEtcd) Write(key string, value string, ttl int) error {
 	use_key := getKvKeyWithPrefix(k.Prefix, key)
-	log.Printf("etcd.Write(): Writing '%s' key value", use_key)
+	//log.Printf("etcd.Write(): Writing '%s' key value", use_key)
 	resp, err := k.Kapi.Set(context.Background(), use_key, value, nil)
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func (k *KvBackendEtcd) Write(key string, value string, ttl int) error {
 
 func (k *KvBackendEtcd) Delete(key string) error {
 	use_key := getKvKeyWithPrefix(k.Prefix, key)
-	log.Printf("etcd.Delete(): Deleting '%s' key value", use_key)
+	//log.Printf("etcd.Delete(): Deleting '%s' key value", use_key)
 	resp, err := k.Kapi.Delete(context.Background(), use_key, nil)
 	if err != nil {
 		return err
