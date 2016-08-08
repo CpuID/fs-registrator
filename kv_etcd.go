@@ -46,41 +46,54 @@ func (k *KvBackendEtcd) GetPrefix() string {
 	return k.Prefix
 }
 
-func (k *KvBackendEtcd) UseKey(key string) string {
-	use_key := k.Prefix
-	if len(key) > 0 {
-		use_key = fmt.Sprintf("%s/%s", use_key, key)
-	}
-	return use_key
-}
-
 // If the key is a prefix (recursive lookup), set recursive = true
 // Results will be key/value in a map.
 func (k *KvBackendEtcd) Read(key string, recursive bool) (*map[string]string, error) {
-	use_key := k.UseKey(key)
+	use_key := getKvKeyWithPrefix(k.Prefix, key)
 	log.Printf("etcd.Read(): Getting '%s' key value (recursive: %t)", use_key, recursive)
-	// TODO: parse option for recursive to .Get()
-	resp, err := k.Kapi.Get(context.Background(), use_key, nil)
-	var results map[string]string
+	var get_options etcd_client.GetOptions
+	if recursive == true {
+		get_options.Recursive = true
+	}
+	resp, err := k.Kapi.Get(context.Background(), use_key, &get_options)
+	results := make(map[string]string)
 	if err != nil {
 		if strings.Contains(err.Error(), "100: Key not found") {
 			return &results, errors.New("KEY_NOT_FOUND")
 		} else {
 			return &results, err
 		}
-	} else {
-		// print common key info
-		log.Printf("Get is done. Metadata is %q\n", resp)
-		// print value
-		log.Printf("%q key has %q value\n", resp.Node.Key, resp.Node.Value)
-		log.Printf("Count of child nodes: %d\n", len(resp.Node.Nodes))
 	}
-	// TODO: parse out etcd_client.Node, get a string value?
+	//log.Printf("Get is done. Metadata is %q\n", resp)
+	//log.Printf("%q key has %q value\n", resp.Node.Key, resp.Node.Value)
+	//log.Printf("Count of child nodes: %d\n", len(resp.Node.Nodes))
+	if resp.Node.Dir == true {
+		for _, v := range resp.Node.Nodes {
+			// We only support a single layer of keys under a single parent directory currently, as opposed to recursive keys.
+			// Can support more layers in future as required (using a separate function call), this use case doesn't require it.
+			if v.Dir == true {
+				return new(map[string]string), errors.New("UNSUPPORTED_CHILD_KEY_AS_DIRECTORY")
+			}
+			results[stripKvKeyPrefix(k.Prefix, v.Key)] = v.Value
+		}
+	} else {
+		result_key := stripKvKeyPrefix(k.Prefix, resp.Node.Key)
+		if len(result_key) == 0 {
+			// If we strip the prefix, there would be no key at all. Leave it in place, just remove leading slash instead.
+			// This use case should be rare in this app.
+			if resp.Node.Key[0:1] == "/" && len(resp.Node.Key) > 1 {
+				result_key = resp.Node.Key[1:]
+			} else {
+				result_key = resp.Node.Key
+			}
+		}
+		results[result_key] = resp.Node.Value
+	}
 	return &results, nil
 }
 
 func (k *KvBackendEtcd) Write(key string, value string, ttl int) error {
-	use_key := k.UseKey(key)
+	use_key := getKvKeyWithPrefix(k.Prefix, key)
 	log.Printf("etcd.Write(): Writing '%s' key value", use_key)
 	resp, err := k.Kapi.Set(context.Background(), use_key, value, nil)
 	if err != nil {
@@ -93,7 +106,7 @@ func (k *KvBackendEtcd) Write(key string, value string, ttl int) error {
 }
 
 func (k *KvBackendEtcd) Delete(key string) error {
-	use_key := k.UseKey(key)
+	use_key := getKvKeyWithPrefix(k.Prefix, key)
 	log.Printf("etcd.Delete(): Deleting '%s' key value", use_key)
 	resp, err := k.Kapi.Delete(context.Background(), use_key, nil)
 	if err != nil {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"reflect"
 	"strconv"
 	"sync"
 	"testing"
@@ -37,10 +38,9 @@ func TestSyncRegistrations(t *testing.T) {
 	test_sip_user := "1001"
 	test_sip_pass := "1234"
 	test_sip_contact_port := uint(49202)
-	// TODO: fill in
-	//expected_result1 := map[string]string{
-	//	"": "",
-	//}
+	expected_result1 := map[string]string{
+		"1001@sip.testserver.tld": "{\"host\":\"192.168.99.100\",\"port\":5061}",
+	}
 	// result 2 is an empty map
 
 	// Do a SIP register, so we have something to start with.
@@ -57,7 +57,9 @@ func TestSyncRegistrations(t *testing.T) {
 	}
 	log.Printf("TestSyncRegistrations() Read Error: %+v\n", err)
 	log.Printf("TestSyncRegistrations() Read Result 1: %+v\n", result1)
-	// TODO: check an expected_result of the above etcd read
+	if reflect.DeepEqual(*result1, expected_result1) != true {
+		t.Error("Expected", expected_result1, "got", result1)
+	}
 
 	// Cleanup the registration, before performing another sync.
 	simulateSipDeregister(dockerHost, uint(dockerContainerPorts["freeswitch_1-5060/udp"]), test_sip_user, test_sip_pass, test_sip_contact_port, t)
@@ -71,5 +73,7 @@ func TestSyncRegistrations(t *testing.T) {
 	}
 	log.Printf("TestSyncRegistrations() Read Error 2: %+v\n", err)
 	log.Printf("TestSyncRegistrations() Read Result 2: %+v\n", result2)
-	// TODO: check an expected_result of the above etcd read
+	if len(*result2) > 0 {
+		t.Errorf("Expected a zero length result from K/V backend, got %d results: %+v\n", len(*result2), *result2)
+	}
 }

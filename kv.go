@@ -93,3 +93,35 @@ func getKvBackendValueJsonString(input KvBackendValue) (string, error) {
 	}
 	return string(json), nil
 }
+
+//
+
+// The prefix should always be non-zero length in our use cases.
+// The key may be empty though, for prefix only lookups.
+func getKvKeyWithPrefix(prefix string, key string) string {
+	use_key := prefix
+	if len(key) > 0 {
+		use_key = fmt.Sprintf("%s/%s", use_key, key)
+	}
+	return use_key
+}
+
+// The use case for this normally involves leading slashes.
+func stripKvKeyPrefix(prefix string, full_key string) string {
+	use_key := full_key
+	// Strip leading slash first.
+	if use_key[0:1] == "/" {
+		use_key = use_key[1:]
+	}
+	//log.Printf("stripKvKeyPrefix(%s, %s) use_key slice: %s\n", prefix, full_key, use_key[0:len(prefix)])
+	if use_key[0:len(prefix)] == prefix {
+		use_key = use_key[len(prefix):]
+	}
+	//log.Printf("stripKvKeyPrefix(%s, %s) new use_key 1: %s\n", prefix, full_key, use_key)
+	// Strip leading slash again if required.
+	if len(use_key) > 0 && use_key[0:1] == "/" {
+		use_key = use_key[1:]
+	}
+	//log.Printf("stripKvKeyPrefix(%s, %s) new use_key 2: %s\n", prefix, full_key, use_key)
+	return use_key
+}

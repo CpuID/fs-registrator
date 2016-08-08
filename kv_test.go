@@ -101,3 +101,33 @@ func TestGetKvBackendValueJsonString(t *testing.T) {
 		}
 	*/
 }
+
+//
+
+func TestGetKvKeyWithPrefix(t *testing.T) {
+	expected_result1 := "someprefix/somekey"
+	result1 := getKvKeyWithPrefix("someprefix", "somekey")
+	if result1 != expected_result1 {
+		t.Error("Expected", expected_result1, "got", result1)
+	}
+	//
+	expected_result2 := "anotherprefix"
+	result2 := getKvKeyWithPrefix("anotherprefix", "")
+	if result2 != expected_result2 {
+		t.Error("Expected", expected_result2, "got", result2)
+	}
+}
+
+func TestStripKvKeyPrefix(t *testing.T) {
+	expected_result1 := "somekey"
+	result1 := stripKvKeyPrefix("someprefix", "/someprefix/somekey")
+	if result1 != expected_result1 {
+		t.Error("Expected", expected_result1, "got", result1)
+	}
+	//
+	expected_result2 := ""
+	result2 := stripKvKeyPrefix("anotherprefix", "/anotherprefix")
+	if result2 != expected_result2 {
+		t.Error("Expected", expected_result2, "got", result2)
+	}
+}
