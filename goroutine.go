@@ -41,6 +41,7 @@ func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, a
 		return
 	}
 	log.Printf("watchForRegistrationEvents(): Started.\n")
+	// For anything that returns a WARNING here, full state syncs should act as an insurance policy.
 	for {
 		msg, err := esl_client.ReadMessage()
 		if err != nil {
@@ -49,14 +50,14 @@ func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, a
 				log.Printf("(Ignored) Error while reading FreeSWITCH message: %s", err)
 				continue
 			}
-			log.Printf("Error while reading FreeSWITCH message: %s", err)
-			break
+			log.Printf("WARNING: Error reading FreeSWITCH message: %s", err.Error())
+			continue
 		}
 		log.Printf("watchForRegistrationEvents() : New Message from FreeSWITCH - %+v\n", msg)
 		reg_event, reg_event_user, err := parseFreeswitchRegEvent(msg)
 		if err != nil {
 			// TODO: log to an error channel?
-			log.Fatal(err)
+			log.Printf("WARNING: %s", err.Error())
 		}
 		log.Printf("watchForRegistrationEvents() : Event - %s, User - %s\n", reg_event, reg_event_user)
 		if reg_event == "register" {
@@ -66,19 +67,19 @@ func watchForRegistrationEvents(esl_client *goesl.Client, advertise_ip string, a
 			})
 			if err != nil {
 				// TODO: log to an error channel?
-				log.Fatal(err)
+				log.Printf("WARNING: %s", err.Error())
 			}
 			// TODO: move the TTL out to somewhere more reusable
 			err = kv_backend.Write(reg_event_user, kv_backend_value_string, 300)
 			if err != nil {
 				// TODO: log to an error channel?
-				log.Fatal(err)
+				log.Printf("WARNING: %s", err.Error())
 			}
 		} else if reg_event == "unregister" || reg_event == "expire" {
 			err = kv_backend.Delete(reg_event_user)
 			if err != nil {
 				// TODO: log to an error channel?
-				log.Fatal(err)
+				log.Printf("WARNING: %s", err.Error())
 			}
 		}
 		// Increment the event counter, send a message on the event channel that "something happened"
