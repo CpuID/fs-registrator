@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"regexp"
 	//"reflect"
 	"testing"
 
@@ -19,23 +20,29 @@ func checkSipPortIsAvailable(t *testing.T) {
 
 func simulateSipRegister(host string, port uint, user string, password string, contact_port uint, t *testing.T) error {
 	// sipsak -U -d -n -x 120 -C "sip:username@127.0.0.1:49201" -s "sip:username@192.168.99.100" -vvv -a somepassword
-	out, err := exec.Command("/usr/local/bin/sipsak", "-U", "-D", "-n", "-x", "120", "-C", fmt.Sprintf("\"sip:%s@127.0.0.1:%d\"", user, contact_port), "-s", fmt.Sprintf("\"sip:%s@%s:%d\"", user, host, port), "-v", "-a", password).CombinedOutput()
+	cmd := exec.Command("sipsak", "-U", "-d", "-n", "-x", "120", "-C", fmt.Sprintf("sip:%s@127.0.0.1:%d", user, contact_port), "-s", fmt.Sprintf("sip:%s@%s:%d", user, host, port), "-vvv", "-a", password)
+	//log.Printf("simulateSipRegister() : Command - %+v\n", cmd)
+	_, err := cmd.CombinedOutput()
 	// If SIP message fails to get a 200 OK back, a non-zero exit code will be returned.
 	if err != nil {
+		log.Printf("simulateSipRegister() : Command (that errored) - %+v\n", cmd)
 		t.Fatal(err)
 	}
-	log.Printf("SIP Register Output: %s\n", out)
+	//log.Printf("SIP Register Output: %s\n", out)
 	return nil
 }
 
 func simulateSipDeregister(host string, port uint, user string, password string, contact_port uint, t *testing.T) error {
 	// sipsak -U -d -n -x 0 -C "<sip:username@127.0.0.1:49201>;expires=0" -s "sip:username@192.168.99.100" -vvv -a somepassword
-	out, err := exec.Command("sipsak", "-U", "-D", "-n", "-x", "0", "-C", fmt.Sprintf("<sip:%s@127.0.0.1:%d>;expires=0", user, contact_port), "-s", fmt.Sprintf("sip:%s@%s:%d", user, host, port), "-v", "-a", password).CombinedOutput()
+	cmd := exec.Command("sipsak", "-U", "-d", "-n", "-x", "0", "-C", fmt.Sprintf("<sip:%s@127.0.0.1:%d>;expires=0", user, contact_port), "-s", fmt.Sprintf("sip:%s@%s:%d", user, host, port), "-vvv", "-a", password)
+	//log.Printf("simulateSipDeregister() : Command - %+v\n", cmd)
+	_, err := cmd.CombinedOutput()
 	// If SIP message fails to get a 200 OK back, a non-zero exit code will be returned.
 	if err != nil {
+		log.Printf("simulateSipDeregister() : Command (that errored) - %+v\n", cmd)
 		t.Fatal(err)
 	}
-	log.Printf("SIP Deregister Output: %s\n", out)
+	//log.Printf("SIP Deregister Output: %s\n", out)
 	return nil
 }
 
@@ -48,6 +55,7 @@ func getTestEslClient(t *testing.T) *goesl.Client {
 	if err != nil {
 		t.Fatal(err)
 	}
+	go test_client.Handle()
 	return &test_client
 }
 
@@ -114,25 +122,25 @@ func TestParseFreeswitchRegEvent(t *testing.T) {
 }
 
 func TestGetFreeswitchRegistrations(t *testing.T) {
-	//expected_result := []string{
-	// TODO: fill in
-	//}
-	//test_client := getTestEslClient(t)
+	// The single registration that occurred above will look like 1000@x.x.x.x, with the IP being based on the Docker network in use.
+	// This is commonly a 172.17.0.x address, let's just regex search for an IP.
+	expected_re := regexp.MustCompile("^1000@[0-9]+.[0-9]+.[0-9]+.[0-9]+$")
+	//
+	test_client := getTestEslClient(t)
 	checkSipPortIsAvailable(t)
-	// TODO: fix exit status 2 when running the below
-	//simulateSipRegister(dockerHost, uint(dockerContainerPorts["freeswitch_1-5060/udp"]), "1000", "1234", uint(49201), t)
-	/*
-		TODO: work out why getFreeswitchRegistrations() hangs waiting for messages, should receive a response correctly...
-		result, err := getFreeswitchRegistrations(test_client, []string{"internal"})
-		if err != nil {
-			t.Error("Expected nil error, got", err)
-		}
-		log.Printf("Test FS Registrations: %+v\n", result)
-	*/
-	/*
-		TODO: only enable once we have data in expected_result and result, otherwise its permafail due to pointers.
-		if reflect.DeepEqual(result, expected_result) != true {
-			t.Error("Expected", expected_result, "got", &result)
-		}
-	*/
+	simulateSipRegister(dockerHost, uint(dockerContainerPorts["freeswitch_1-5060/udp"]), "1000", "1234", uint(49201), t)
+	result, err := getFreeswitchRegistrations(test_client, []string{"internal"})
+	if err != nil {
+		t.Error("Expected nil error, got", err)
+	}
+	//log.Printf("Test FS Registrations: %+v\n", result)
+	if len(*result) != 1 {
+		t.Error("Expected 1 registration, got", len(*result))
+	}
+	result_no_pointer := *result
+	if expected_re.MatchString(result_no_pointer[0]) != true {
+		t.Error("Expected single registration to match regex", expected_re.String(), "- no match")
+	}
+	// Cleanup so other tests can make registrations if required.
+	simulateSipDeregister(dockerHost, uint(dockerContainerPorts["freeswitch_1-5060/udp"]), "1000", "1234", uint(49201), t)
 }
