@@ -56,7 +56,7 @@ func CreateKvBackend(conf map[string]string) (KvBackend, error) {
 
 	if ok2 == false {
 		// Factory has not been registered
-		return nil, errors.New(fmt.Sprintf("Invalid K/V Backend Name. Must be one of: %s", strings.Join(availableKvBackends(), ", ")))
+		return nil, fmt.Errorf("Invalid K/V Backend Name. Must be one of: %s", strings.Join(availableKvBackends(), ", "))
 	}
 
 	// Run the factory with the configuration

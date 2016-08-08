@@ -22,7 +22,7 @@ func subscribeToFreeswitchRegEvents(esl_client *goesl.Client) error {
 	}
 	for _, v := range []string{"Content-Type", "Reply-Text"} {
 		if _, ok := result.Headers[v]; ok == false {
-			return errors.New(fmt.Sprintf("subscribeToFreeswitchRegEvents() : Response header '%s' header is missing, cannot proceed.", v))
+			return fmt.Errorf("subscribeToFreeswitchRegEvents() : Response header '%s' header is missing, cannot proceed.", v)
 		}
 	}
 	if result.Headers["Content-Type"] != "command/reply" {
@@ -39,15 +39,15 @@ func subscribeToFreeswitchRegEvents(esl_client *goesl.Client) error {
 func parseFreeswitchRegEvent(event *goesl.Message) (string, string, error) {
 	for _, v := range []string{"Event-Subclass", "username", "from-host"} {
 		if _, ok := event.Headers[v]; ok == false {
-			return "", "", errors.New(fmt.Sprintf("getFreeswitchRegEvent() : '%s' field does not exist in FreeSWITCH Event, must be present.", v))
+			return "", "", fmt.Errorf("getFreeswitchRegEvent() : '%s' field does not exist in FreeSWITCH Event, must be present.", v)
 		}
 		if len(event.Headers[v]) == 0 {
-			return "", "", errors.New(fmt.Sprintf("getFreeswitchRegEvent() : '%s' field cannot be empty in FreeSWITCH Event.", v))
+			return "", "", fmt.Errorf("getFreeswitchRegEvent() : '%s' field cannot be empty in FreeSWITCH Event.", v)
 		}
 	}
 	valid_event_subclasses := []string{"sofia::register", "sofia::expire", "sofia::unregister"}
 	if stringInSlice(event.Headers["Event-Subclass"], valid_event_subclasses) == false {
-		return "", "", errors.New(fmt.Sprintf("getFreeswitchRegEvent() : 'Event-Subclass' field must be one of: %s", strings.Join(valid_event_subclasses, ", ")))
+		return "", "", fmt.Errorf("getFreeswitchRegEvent() : 'Event-Subclass' field must be one of: %s", strings.Join(valid_event_subclasses, ", "))
 	}
 	return strings.Replace(event.Headers["Event-Subclass"], "sofia::", "", 1), fmt.Sprintf("%s@%s", event.Headers["username"], event.Headers["from-host"]), nil
 }

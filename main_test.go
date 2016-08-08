@@ -40,7 +40,7 @@ func getDockerHost() (string, error) {
 	// Example: tcp://192.168.99.100:2376
 	split_docker_host := strings.Split(docker_host_env, ":")
 	if len(split_docker_host) != 3 {
-		return "", errors.New(fmt.Sprintf("Invalid format for DOCKER_HOST environment variable, expected proto://host:port, got %s", docker_host_env))
+		return "", fmt.Errorf("Invalid format for DOCKER_HOST environment variable, expected proto://host:port, got %s", docker_host_env)
 	}
 	docker_host := strings.Replace(split_docker_host[1], "/", "", 2)
 	log.Printf("DOCKER_HOST environment variable set, using %s\n", docker_host)
@@ -69,28 +69,28 @@ func parseContainerPorts(info_set *project.InfoSet, docker_project_name string) 
 						// Port is exposed outside of the container.
 						split_host_port := strings.Split(v3, "->")
 						if len(split_host_port) != 2 {
-							return map[string]uint{}, errors.New(fmt.Sprintf(
+							return map[string]uint{}, fmt.Errorf(
 								"parseContainerPorts() : Splitting host/ports '%s' (by ->) expected 2 results, got %d, cannot proceed.",
-								v3, len(split_host_port)))
+								v3, len(split_host_port))
 						}
 						split_external_host_port := strings.Split(split_host_port[0], ":")
 						if len(split_external_host_port) != 2 {
-							return map[string]uint{}, errors.New(fmt.Sprintf(
+							return map[string]uint{}, fmt.Errorf(
 								"parseContainerPorts() : Splitting external host/port '%s' (by :) expected 2 results, got %d, cannot proceed.",
-								split_host_port[0], len(split_external_host_port)))
+								split_host_port[0], len(split_external_host_port))
 						}
 						split_internal_port := strings.Split(split_host_port[1], "/")
 						if len(split_internal_port) != 2 {
-							return map[string]uint{}, errors.New(fmt.Sprintf(
+							return map[string]uint{}, fmt.Errorf(
 								"parseContainerPorts() : Splitting internal port '%s' (by /) expected 2 results, got %d, cannot proceed.",
-								split_host_port[1], len(split_internal_port)))
+								split_host_port[1], len(split_internal_port))
 						}
 						// TODOLATER: validate the pieces of split_host and split_port?
 						external_port_int, err := strconv.Atoi(split_external_host_port[1])
 						if err != nil {
-							return map[string]uint{}, errors.New(fmt.Sprintf(
+							return map[string]uint{}, fmt.Errorf(
 								"parseContainerPorts() : Cannot convert %s to an int for external port, cannot proceed. Error: %s",
-								split_external_host_port[1], err.Error()))
+								split_external_host_port[1], err.Error())
 						}
 						use_service_name := strings.Replace(container_keys[k1], fmt.Sprintf("%s_", docker_project_name), "", 1)
 						result[fmt.Sprintf("%s-%s/%s", use_service_name, split_internal_port[0], split_internal_port[1])] = uint(external_port_int)
@@ -120,7 +120,7 @@ func pollContainerTcpPortHealth(host string, port uint, timeout_sec uint) error 
 		time.Sleep(time.Second)
 	}
 	fmt.Printf(" Timeout reached.\n")
-	return errors.New(fmt.Sprintf("Connection attempt to %s:%d timed out after %d seconds.", host, port, timeout_sec))
+	return fmt.Errorf("Connection attempt to %s:%d timed out after %d seconds.", host, port, timeout_sec)
 }
 
 var dockerHost string

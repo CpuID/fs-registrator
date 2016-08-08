@@ -30,15 +30,15 @@ func parseFlags(c *cli.Context) (*ArgConfig, error) {
 
 	for _, v := range []string{"fshost", "fspassword", "fsprofiles", "fsadvertiseip", "kvhost", "kvprefix"} {
 		if len(c.String(v)) == 0 {
-			return new(ArgConfig), errors.New(fmt.Sprintf("Error: --%s must not be empty.", v))
+			return new(ArgConfig), fmt.Errorf("Error: --%s must not be empty.", v)
 		}
 	}
 	for _, v := range []string{"fsport", "fsadvertiseport", "kvport"} {
 		if c.Int(v) <= 0 {
-			return new(ArgConfig), errors.New(fmt.Sprintf("Error: --%s must not be 0 (or empty).", v))
+			return new(ArgConfig), fmt.Errorf("Error: --%s must not be 0 (or empty).", v)
 		}
 		if c.Int(v) > 65536 {
-			return new(ArgConfig), errors.New(fmt.Sprintf("Error: --%s must be below 65536.", v))
+			return new(ArgConfig), fmt.Errorf("Error: --%s must be below 65536.", v)
 		}
 	}
 	result.FreeswitchHost = c.String("fshost")
@@ -52,7 +52,7 @@ func parseFlags(c *cli.Context) (*ArgConfig, error) {
 
 	available_backends := availableKvBackends()
 	if stringInSlice(c.String("kvbackend"), available_backends) != true {
-		return new(ArgConfig), errors.New(fmt.Sprintf("Error: --kvbackend must be one of: %s", strings.Join(available_backends, ", ")))
+		return new(ArgConfig), fmt.Errorf("Error: --kvbackend must be one of: %s", strings.Join(available_backends, ", "))
 	}
 	result.KvBackend = c.String("kvbackend")
 

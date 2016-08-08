@@ -18,7 +18,7 @@ type KvBackendEtcd struct {
 func NewKvBackendEtcd(conf map[string]string) (KvBackend, error) {
 	for _, v := range []string{"host", "port", "prefix"} {
 		if _, ok := conf[v]; ok == false {
-			return nil, errors.New(fmt.Sprintf("etcd: '%s' key does not exist in conf.", v))
+			return nil, fmt.Errorf("etcd: '%s' key does not exist in conf.", v)
 		}
 	}
 	cfg := etcd_client.Config{
