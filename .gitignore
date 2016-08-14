@@ -23,5 +23,5 @@ _testmain.go
 *.test
 *.prof
 
-# Local test builds
-cpuid-fs-registrator
+bin/fs-registrator-*
+/cpuid-fs-registrator
