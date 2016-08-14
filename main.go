@@ -16,7 +16,7 @@ import (
 func main() {
 	app := cli.NewApp()
 	app.Name = "fs-registrator"
-	app.Version = "0.1.0"
+	app.Version = fs_registrator_version
 	app.Usage = "FreeSWITCH Sofia-SIP Registry Bridge (Sync to Key/Value Store)"
 	app.Action = func(c *cli.Context) error {
 		arg_config, err := parseFlags(c)
