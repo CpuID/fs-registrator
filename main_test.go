@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/docker/libcompose/docker"
+	"github.com/docker/libcompose/docker/ctx"
 	"github.com/docker/libcompose/project"
 	"github.com/docker/libcompose/project/options"
 	"golang.org/x/net/context"
@@ -50,21 +50,19 @@ func getDockerHost() (string, error) {
 // map["servicename-internalport/protocol"] = externalport
 func parseContainerPorts(info_set *project.InfoSet, docker_project_name string) (map[string]uint, error) {
 	result := make(map[string]uint)
-	container_keys := make(map[int]string)
 	for k1, v1 := range *info_set {
-		for _, v2 := range v1 {
-			//log.Printf("k1: %d, k2: %d, v2 Key: %s, v2 Val: %s\n", k1, k2, v2.Key, v2.Value)
-			if v2.Key == "Name" {
-				container_keys[k1] = v2.Value
-			} else if v2.Key == "Ports" {
-				// If we don't have the container name already, can't proceed for it.
-				if _, ok := container_keys[k1]; ok == false {
-					return map[string]uint{}, errors.New("parseContainerPorts() : Found 'Ports' for a Container Key without a 'Name' attribute prior, cannot proceed.")
-				}
-				// v2.Value == 2380/tcp, 0.0.0.0:32777->2379/tcp
+		var container_name string
+		container_ports := make(map[string]uint)
+		// Name does not always come before Ports when iterating over the map.
+		for k2, v2 := range v1 {
+			//log.Printf("k1: %d, k2: %s, v2: %s\n", k1, k2, v2)
+			if k2 == "Name" {
+				container_name = v2
+			} else if k2 == "Ports" {
+				// v2 == 2380/tcp, 0.0.0.0:32777->2379/tcp
 				// Parse out the ports that are exposed publicly.
 				// Could use regex for some of these splits, being super safe and just doing it with basic string splits.
-				for _, v3 := range strings.Split(v2.Value, ", ") {
+				for _, v3 := range strings.Split(v2, ", ") {
 					if strings.Contains(v3, "->") == true {
 						// Port is exposed outside of the container.
 						split_host_port := strings.Split(v3, "->")
@@ -92,11 +90,19 @@ func parseContainerPorts(info_set *project.InfoSet, docker_project_name string) 
 								"parseContainerPorts() : Cannot convert %s to an int for external port, cannot proceed. Error: %s",
 								split_external_host_port[1], err.Error())
 						}
-						use_service_name := strings.Replace(container_keys[k1], fmt.Sprintf("%s_", docker_project_name), "", 1)
-						result[fmt.Sprintf("%s-%s/%s", use_service_name, split_internal_port[0], split_internal_port[1])] = uint(external_port_int)
+						container_ports[fmt.Sprintf("%s/%s", split_internal_port[0], split_internal_port[1])] = uint(external_port_int)
 					}
 				}
 			}
+		}
+		// If we don't have the container name already, can't proceed.
+		if container_name == "" {
+			return map[string]uint{}, fmt.Errorf("parseContainerPorts() : Did not find a 'Name' attribute in InfoSet key '%d. Cannot proceed.", k1)
+		}
+		use_service_name := strings.Replace(container_name, fmt.Sprintf("%s_", docker_project_name), "", 1)
+		// Prefix all of the container ports with container name, and append to the result.
+		for portk1, portv1 := range container_ports {
+			result[fmt.Sprintf("%s-%s", use_service_name, portk1)] = portv1
 		}
 	}
 	log.Printf("Service Ports: %+v\n", result)
@@ -128,7 +134,7 @@ var dockerContainerPorts map[string]uint
 
 func TestMain(m *testing.M) {
 	docker_project_name := "fsregistrator"
-	project, err := docker.NewProject(&docker.Context{
+	project, err := docker.NewProject(&ctx.Context{
 		Context: project.Context{
 			ComposeFiles: []string{"docker-compose.yml"},
 			ProjectName:  docker_project_name,
@@ -138,7 +144,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	ps, err := project.Ps(context.Background(), false)
+	ps, err := project.Ps(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -153,7 +159,7 @@ func TestMain(m *testing.M) {
 	}
 	defer teardownMain(project)
 
-	ps, err = project.Ps(context.Background(), false)
+	ps, err = project.Ps(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
